@@ -1,0 +1,60 @@
+[gd_scene load_steps=7 format=2]
+
+[ext_resource path="res://scripts/Ground.gd" type="Script" id=1]
+[ext_resource path="res://scripts/Wall.gd" type="Script" id=2]
+[ext_resource path="res://scripts/DeliveryZone.gd" type="Script" id=3]
+[ext_resource path="res://scripts/Door.gd" type="Script" id=4]
+[ext_resource path="res://scenes/Player.tscn" type="PackedScene" id=5]
+[ext_resource path="res://scenes/HUD.tscn" type="PackedScene" id=6]
+
+[node name="Haven" type="Node2D"]
+
+[node name="Ground" type="Node2D" parent="."]
+position = Vector2( 400, 300 )
+script = ExtResource( 1 )
+size = Vector2( 560, 460 )
+color = Color( 0.14, 0.16, 0.18, 1 )
+label_text = "HAVEN"
+
+[node name="Walls" type="Node2D" parent="."]
+
+[node name="TopWallLeft" type="StaticBody2D" parent="Walls"]
+position = Vector2( 250, 88 )
+script = ExtResource( 2 )
+size = Vector2( 200, 30 )
+
+[node name="TopWallRight" type="StaticBody2D" parent="Walls"]
+position = Vector2( 550, 88 )
+script = ExtResource( 2 )
+size = Vector2( 200, 30 )
+
+[node name="BottomWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 400, 512 )
+script = ExtResource( 2 )
+size = Vector2( 520, 30 )
+
+[node name="LeftWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 135, 300 )
+script = ExtResource( 2 )
+size = Vector2( 30, 440 )
+
+[node name="RightWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 665, 300 )
+script = ExtResource( 2 )
+size = Vector2( 30, 440 )
+
+[node name="DeliveryZone" type="Area2D" parent="."]
+position = Vector2( 400, 300 )
+script = ExtResource( 3 )
+
+[node name="ExitDoor" type="Area2D" parent="."]
+position = Vector2( 400, 82 )
+script = ExtResource( 4 )
+target_scene = "res://scenes/Yard.tscn"
+label_text = "Yard-01ga chiqish"
+
+[node name="Player" parent="." instance=ExtResource( 5 )]
+position = Vector2( 400, 450 )
+
+[node name="HUD" parent="." instance=ExtResource( 6 )]
+objective_text = "Yard-01ga kirib, yukni toping va HAVENga qaytaring."

@@ -2,27 +2,18 @@ extends CanvasLayer
 
 const WINDOW_SIZE := Vector2(1024, 600)
 
-var oxygen_bar: ProgressBar
-var power_bar: ProgressBar
-var hull_bar: ProgressBar
-var food_bar: ProgressBar
-var sol_label: Label
-var parts_label: Label
-var best_sol_label: Label
-var alert_label: Label
-var warning_overlay: ColorRect
-var warning_label: Label
+export var objective_text := "Yardga kirib, yukni toping va HAVENga qaytaring."
 
-var end_panel: Panel
-var end_title_label: Label
-var reason_label: Label
-var survived_label: Label
-var restart_button: Button
-
-var _was_critical := false
-var _alert_time_left := 0.0
+var health_bar: ProgressBar
+var stamina_bar: ProgressBar
+var ammo_label: Label
+var objective_label: Label
+var msg_panel: Panel
+var msg_label: Label
 
 func _ready() -> void:
+	add_to_group("hud")
+
 	var root := Control.new()
 	add_child(root)
 
@@ -30,84 +21,37 @@ func _ready() -> void:
 	bars_box.rect_position = Vector2(16, 16)
 	root.add_child(bars_box)
 
-	oxygen_bar = _make_bar(bars_box, "Kislorod")
-	power_bar = _make_bar(bars_box, "Quvvat")
-	hull_bar = _make_bar(bars_box, "Korpus")
-	food_bar = _make_bar(bars_box, "Oziq-ovqat")
+	health_bar = _make_bar(bars_box, "Sog'liq")
+	stamina_bar = _make_bar(bars_box, "Chidamlilik")
 
-	sol_label = Label.new()
-	sol_label.rect_position = Vector2(16, 192)
-	root.add_child(sol_label)
+	ammo_label = Label.new()
+	ammo_label.rect_position = Vector2(16, 96)
+	root.add_child(ammo_label)
 
-	parts_label = Label.new()
-	parts_label.rect_position = Vector2(16, 216)
-	root.add_child(parts_label)
+	objective_label = Label.new()
+	objective_label.text = objective_text
+	objective_label.rect_position = Vector2(16, 120)
+	objective_label.rect_min_size = Vector2(360, 40)
+	objective_label.autowrap = true
+	root.add_child(objective_label)
 
-	best_sol_label = Label.new()
-	best_sol_label.rect_position = Vector2(16, 240)
-	best_sol_label.modulate = Color(1, 1, 1, 0.6)
-	best_sol_label.text = "Eng yaxshi natija: SOL %d" % GameManager.best_sol
-	root.add_child(best_sol_label)
+	var hint := Label.new()
+	hint.text = "WASD yurish, Shift yugurish, sichqoncha nishon, LMB otish, R o'qlash, E olish, G qo'yish"
+	hint.modulate = Color(1, 1, 1, 0.5)
+	hint.rect_position = Vector2(16, WINDOW_SIZE.y - 30.0)
+	root.add_child(hint)
 
-	alert_label = Label.new()
-	alert_label.rect_position = Vector2(WINDOW_SIZE.x / 2.0 - 120.0, 50.0)
-	alert_label.modulate = Color(1.0, 0.6, 0.2)
-	alert_label.visible = false
-	root.add_child(alert_label)
+	msg_panel = Panel.new()
+	msg_panel.rect_size = Vector2(440, 160)
+	msg_panel.rect_position = (WINDOW_SIZE - msg_panel.rect_size) / 2.0
+	msg_panel.visible = false
+	root.add_child(msg_panel)
 
-	warning_overlay = ColorRect.new()
-	warning_overlay.rect_size = WINDOW_SIZE
-	warning_overlay.color = Color(0.8, 0.1, 0.1, 0.0)
-	warning_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(warning_overlay)
-
-	warning_label = Label.new()
-	warning_label.text = "OGOHLANTIRISH!"
-	warning_label.rect_position = Vector2(WINDOW_SIZE.x / 2.0 - 70.0, 16)
-	warning_label.visible = false
-	root.add_child(warning_label)
-
-	end_panel = Panel.new()
-	end_panel.rect_size = Vector2(440, 250)
-	end_panel.rect_position = (WINDOW_SIZE - end_panel.rect_size) / 2.0
-	end_panel.visible = false
-	root.add_child(end_panel)
-
-	var vbox := VBoxContainer.new()
-	vbox.rect_position = Vector2(24, 20)
-	end_panel.add_child(vbox)
-
-	end_title_label = Label.new()
-	vbox.add_child(end_title_label)
-
-	reason_label = Label.new()
-	reason_label.autowrap = true
-	reason_label.rect_min_size = Vector2(390, 40)
-	vbox.add_child(reason_label)
-
-	survived_label = Label.new()
-	vbox.add_child(survived_label)
-
-	var spacer := Control.new()
-	spacer.rect_min_size = Vector2(0, 10)
-	vbox.add_child(spacer)
-
-	restart_button = Button.new()
-	restart_button.text = "Qayta boshlash"
-	restart_button.connect("pressed", self, "_on_restart_pressed")
-	vbox.add_child(restart_button)
-
-	GameManager.connect("oxygen_changed", self, "_on_oxygen_changed")
-	GameManager.connect("power_changed", self, "_on_power_changed")
-	GameManager.connect("hull_changed", self, "_on_hull_changed")
-	GameManager.connect("food_changed", self, "_on_food_changed")
-	GameManager.connect("parts_changed", self, "_on_parts_changed")
-
-	_on_oxygen_changed(GameManager.oxygen)
-	_on_power_changed(GameManager.power)
-	_on_hull_changed(GameManager.hull)
-	_on_food_changed(GameManager.food)
-	_on_parts_changed(GameManager.spare_parts)
+	msg_label = Label.new()
+	msg_label.rect_position = Vector2(24, 24)
+	msg_label.rect_min_size = Vector2(390, 90)
+	msg_label.autowrap = true
+	msg_panel.add_child(msg_label)
 
 func _make_bar(parent: Control, label_text: String) -> ProgressBar:
 	var label := Label.new()
@@ -122,65 +66,19 @@ func _make_bar(parent: Control, label_text: String) -> ProgressBar:
 	parent.add_child(bar)
 	return bar
 
-func _process(delta: float) -> void:
-	if _alert_time_left > 0.0:
-		_alert_time_left -= delta
-		if _alert_time_left <= 0.0:
-			alert_label.visible = false
-
-	if GameManager.is_game_over:
+func _process(_delta: float) -> void:
+	var players := get_tree().get_nodes_in_group("player")
+	if players.size() == 0:
 		return
-
-	sol_label.text = "SOL %d" % GameManager.sol()
-
-	var critical := GameManager.oxygen < 25.0 or GameManager.hull < 25.0 or GameManager.food < 15.0
-	if critical:
-		var pulse := 0.15 + 0.15 * sin(OS.get_ticks_msec() / 150.0)
-		warning_overlay.color.a = pulse
-		warning_label.visible = int(OS.get_ticks_msec() / 300) % 2 == 0
-		if not _was_critical:
-			AudioManager.play_warning()
+	var p: Node = players[0]
+	health_bar.value = p.health
+	stamina_bar.value = p.stamina
+	var reload_text := " (qayta o'qlanmoqda)" if p.reloading else ""
+	if p.carrying_cargo:
+		ammo_label.text = "Yuk ko'tarilgan — qurol ishlatilmaydi"
 	else:
-		warning_overlay.color.a = 0.0
-		warning_label.visible = false
-	_was_critical = critical
+		ammo_label.text = "O'q: %d/%d%s" % [p.ammo, p.WEAPON_MAG_SIZE, reload_text]
 
-func _on_oxygen_changed(value: float) -> void:
-	oxygen_bar.value = value
-
-func _on_power_changed(value: float) -> void:
-	power_bar.value = value
-
-func _on_hull_changed(value: float) -> void:
-	hull_bar.value = value
-
-func _on_food_changed(value: float) -> void:
-	food_bar.value = value
-
-func _on_parts_changed(value: int) -> void:
-	parts_label.text = "Ehtiyot qismlar: %d/%d" % [value, GameManager.REQUIRED_PARTS]
-
-func show_best_sol(value: int) -> void:
-	best_sol_label.text = "Eng yaxshi natija: SOL %d" % value
-
-func show_alert(text: String) -> void:
-	alert_label.text = text
-	alert_label.visible = true
-	_alert_time_left = 3.0
-
-func show_game_over(reason: String, survival_time: float) -> void:
-	end_panel.visible = true
-	end_title_label.text = "STANSIYA HALOKATI"
-	reason_label.text = reason
-	survived_label.text = "Siz SOL %d kunigacha (%d soniya) omon qoldingiz." % [GameManager.sol(), int(survival_time)]
-	show_best_sol(GameManager.best_sol)
-
-func show_victory(survival_time: float) -> void:
-	end_panel.visible = true
-	end_title_label.text = "SIGNAL YUBORILDI!"
-	reason_label.text = "Siz signal massivini faollashtirdingiz. Yordam yo'lda..."
-	survived_label.text = "SOL %d kunida qutqarildingiz (%d soniya)." % [GameManager.sol(), int(survival_time)]
-	show_best_sol(GameManager.best_sol)
-
-func _on_restart_pressed() -> void:
-	get_tree().reload_current_scene()
+func show_mission_complete() -> void:
+	msg_panel.visible = true
+	msg_label.text = "YUK TOPSHIRILDI!\n\n1-bosqich maqsadi bajarildi: yurish, nishonga olish, jang va yukni qaytarish tizimlari ishlayapti."

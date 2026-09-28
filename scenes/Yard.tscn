@@ -1,0 +1,75 @@
+[gd_scene load_steps=8 format=2]
+
+[ext_resource path="res://scripts/Ground.gd" type="Script" id=1]
+[ext_resource path="res://scripts/Wall.gd" type="Script" id=2]
+[ext_resource path="res://scripts/Door.gd" type="Script" id=3]
+[ext_resource path="res://scripts/Enemy.gd" type="Script" id=4]
+[ext_resource path="res://scenes/Cargo.tscn" type="PackedScene" id=5]
+[ext_resource path="res://scenes/Player.tscn" type="PackedScene" id=6]
+[ext_resource path="res://scenes/HUD.tscn" type="PackedScene" id=7]
+
+[node name="Yard" type="Node2D"]
+
+[node name="Ground" type="Node2D" parent="."]
+position = Vector2( 450, 350 )
+script = ExtResource( 1 )
+size = Vector2( 900, 700 )
+color = Color( 0.15, 0.17, 0.14, 1 )
+label_text = "YARD-01"
+
+[node name="Walls" type="Node2D" parent="."]
+
+[node name="TopWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 450, -15 )
+script = ExtResource( 2 )
+size = Vector2( 960, 30 )
+
+[node name="BottomWallLeft" type="StaticBody2D" parent="Walls"]
+position = Vector2( 200, 715 )
+script = ExtResource( 2 )
+size = Vector2( 400, 30 )
+
+[node name="BottomWallRight" type="StaticBody2D" parent="Walls"]
+position = Vector2( 700, 715 )
+script = ExtResource( 2 )
+size = Vector2( 400, 30 )
+
+[node name="LeftWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( -15, 350 )
+script = ExtResource( 2 )
+size = Vector2( 30, 730 )
+
+[node name="RightWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 915, 350 )
+script = ExtResource( 2 )
+size = Vector2( 30, 730 )
+
+[node name="ExitDoor" type="Area2D" parent="."]
+position = Vector2( 450, 705 )
+script = ExtResource( 3 )
+target_scene = "res://scenes/Haven.tscn"
+label_text = "HAVENga qaytish"
+
+[node name="EnemyE01" type="KinematicBody2D" parent="."]
+position = Vector2( 300, 200 )
+script = ExtResource( 4 )
+kind = "E01"
+
+[node name="EnemyE02" type="KinematicBody2D" parent="."]
+position = Vector2( 650, 250 )
+script = ExtResource( 4 )
+kind = "E02"
+
+[node name="EnemyE03" type="KinematicBody2D" parent="."]
+position = Vector2( 450, 120 )
+script = ExtResource( 4 )
+kind = "E03"
+
+[node name="Cargo" parent="." instance=ExtResource( 5 )]
+position = Vector2( 450, 420 )
+
+[node name="Player" parent="." instance=ExtResource( 6 )]
+position = Vector2( 450, 620 )
+
+[node name="HUD" parent="." instance=ExtResource( 7 )]
+objective_text = "Yukni toping, dushmanlardan ehtiyot bo'ling va HAVENga qaytaring."

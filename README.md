@@ -1,84 +1,65 @@
-# Space Station Survival
+# Kestrel City — 1-bosqich (eng kichik o'ynaladigan tajriba)
 
-2D kosmik stansiyada omon qolish o'yini (Godot 3.5, GDScript). "The Martian"
-uslubida: siz stansiya ichida yolg'iz qolgansiz, uni tirik ushlab turib,
-Yerga signal yuborib qutqarilishingiz kerak.
+`docs/KESTREL_CITY_YAGONA_REJA_UZ_V5.md` rejasiga asosan qurilgan. Bu
+rejaning 29.2-bo'limida ta'riflangan **1-bosqich** ("eng kichik o'ynaladigan
+tajriba"): yurish, nishonga olish/otish, uchta dushman turi, bitta hovli,
+yukni topib HAVENga qaytarish. To'liq shahar, syujet, barcha qurollar va
+ko'op tarmoq — bu 34 bo'limlik hujjatning keyingi bosqichlari (29.3–29.11);
+ular hozircha qurilmagan.
 
 ## Qanday ochish
 
-1. [Godot 3.5](https://godotengine.org/download/archive/#3.5) engine'ni o'rnating.
-2. Godot editor'da "Import" tugmasini bosing va shu papkadagi `project.godot`
-   faylini tanlang.
-3. Play (F5) tugmasini bosing — asosiy sahna `scenes/Main.tscn`.
+1. [Godot 3.5](https://godotengine.org/download/archive/#3.5) o'rnating.
+2. Editor'da "Import" → shu papkadagi `project.godot`ni tanlang.
+3. Play (F5) — asosiy sahna `scenes/Haven.tscn`.
 
 ## Boshqarish
 
 | Tugma | Amal |
 |---|---|
-| `W A S D` yoki strelkalar | Yurish |
-| `E` (bosib turing) | Generator/teshikni tuzatish/signalni faollashtirish |
+| `W A S D` | Yurish |
+| `Shift` (bosib turish) | Yugurish (chidamlilik sarflaydi) |
+| Sichqoncha | Nishonga olish |
+| Sichqoncha chap tugmasi | Otish (W01 Signal-9) |
+| `R` | Qayta o'qlash |
+| `E` | Yukni ko'tarish |
+| `G` | Yukni qo'yish |
 
-## Maqsad: Yerga signal yuboring
+## 1-bosqich maqsadi
 
-Stansiyada 4 zona bor: **Komanda**, **Quvvat**, **Kislorod**, **Ombor**.
-To'rt resurs kuzatiladi — **Kislorod**, **Quvvat**, **Korpus butunligi**,
-**Oziq-ovqat** — vaqt o'tishi bilan asta-sekin kamayadi:
-
-- **Kislorod generatori** (Kislorod zonasi) va **Quvvat generatori** (Quvvat
-  zonasi) yonida `E` tugmasini bosib turib mos resursni to'ldiring. Quvvat
-  tugasa, kislorod generatori ishlamay qoladi va kislorod tezroq kamayadi!
-- **Oziq-ovqat zaxirasi** (Ombor zonasida) — ochlikdan halok bo'lmaslik
-  uchun vaqti-vaqti bilan boring.
-- Vaqti-vaqti bilan tasodifiy joyda **korpus teshigi** (qizil, miltillovchi
-  doira) paydo bo'ladi — u kislorod va korpusni tezda yeb qo'yadi. Ichiga
-  kirib `E` ni bosib turib tuzating. **Har bir tuzatilgan teshik sizga 1
-  ehtiyot qism beradi.**
-- 5 ta ehtiyot qismni yig'ib, **Signal massivi**ga (Ombor zonasida) olib
-  boring va `E` tugmasini bosib turib uni faollashtiring — bu sizning
-  **g'alaba** shartingiz ("SIGNAL YUBORILDI! Yordam yo'lda...").
-- Har qanday resurs (kislorod, korpus yoki oziq-ovqat) nolga tushsa — o'yin
-  tugaydi. Necha "SOL" (kosmik kun) omon qolganingiz ko'rsatiladi.
-- **Stansiya vaqt o'tishi bilan yomonlashadi**: teshiklar tobora tezroq
-  paydo bo'la boshlaydi — oxirigacha yetish qiyinlashadi.
-- Resurslardan biri kritik darajaga (kislorod/korpus <25%, oziq-ovqat <15%)
-  tushganda, ekran qizil miltillaydi va ogohlantirish ovozi eshitiladi.
-- Vaqti-vaqti bilan (20-35 soniyada bir) **"METEORIT YOMG'IRI!"** hodisasi
-  sodir bo'ladi — bir vaqtning o'zida 2 tagacha qo'shimcha teshik ochiladi.
-- Har bir generator/teshik/signal yonida turganingizda ustida **[E]**
-  ko'rsatkichi chiqadi — nima qilish kerakligini darhol bilasiz.
-- O'yinchi yurgan yo'nalishga qarab ko'zi buriladi (kamera esa aylanmaydi).
-- **Eng yaxshi natijangiz (SOL)** diskka saqlanadi va keyingi o'yinlarda
-  HUD'da ko'rsatiladi — har safar rekordingizni yangilashga harakat qiling.
+HAVENdan chiqib, Yard-01 hovlisiga kiring. U yerda uchta dushman bor:
+**E01 Sudraluvchi** (sekin, yaqin hujum), **E02 Chopqir** (tez), **E03
+Qichqiruvchi** (hujum qilmaydi, lekin qichqirib boshqa dushmanlarni
+ogohlantiradi). Otishning ovozi yaqin dushmanlarni ham ogohlantiradi
+(shovqin tizimi). Yukni toping (`E`), HAVENga qaytaring va topshirish
+nuqtasiga kiring — missiya tugaydi.
 
 ## Loyiha tuzilishi
 
 ```
 project.godot
+docs/DEV-001-audit.md   # 0-bosqich texnik qarorlari (29.1-bo'lim)
 scripts/
-  GameManager.gd    # barcha resurslar, SOL hisoblagichi, g'alaba/yutqizish holati
-  AudioManager.gd    # kod orqali sintez qilingan ovoz effektlari (tashqi fayl kerak emas)
-  Player.gd          # yurish
-  Wall.gd            # to'siq (kod orqali chiziladi, tashqi rasm kerak emas)
-  Floor.gd           # zona pollari va yorliqlar
-  Station.gd         # kislorod/quvvat/oziq-ovqat generatorlari va signal massivi
-  HullBreach.gd      # tasodifiy paydo bo'ladigan korpus teshigi (ehtiyot qism beradi)
-  Main.gd            # teshik spawn qilish, qiyinlik ortishi, o'yin holatini bog'lash
-  HUD.gd             # interfeys (bar'lar, SOL, ogohlantirish, game-over/g'alaba paneli)
+  GameState.gd          # holat, voqealar jurnali, saqlash (user://)
+  NoiseManager.gd        # shovqin hodisalari (8.1-bo'lim)
+  Player.gd               # yurish/yugurish/chidamlilik, nishonga olish, W01 otish
+  Enemy.gd                 # E01/E02/E03 holat mashinasi (9.1/9.3-bo'lim)
+  Cargo.gd, DeliveryZone.gd, Door.gd
+  Wall.gd, Ground.gd, HUD.gd
 scenes/
-  Main.tscn          # stansiya joylashuvi (xonalar, devorlar, generatorlar, signal massivi)
-  Player.tscn
-  HullBreach.tscn
-  HUD.tscn
+  Haven.tscn   # boshpana: topshirish nuqtasi + chiqish eshigi
+  Yard.tscn    # hovli: 3 dushman + yuk
+  Player.tscn, Cargo.tscn, HUD.tscn
 ```
 
-Barcha vizual elementlar (o'yinchi, devorlar, pollar, generatorlar) tashqi
-rasmlarsiz, to'g'ridan-to'g'ri kod orqali (`_draw()`) chiziladi; ovoz
-effektlari ham kod orqali sintez qilinadi (`AudioStreamSample`) — shuning
-uchun loyihani ochish uchun hech qanday qo'shimcha asset kerak emas.
+Barcha vizual elementlar oddiy geometrik shakllar bilan chiziladi
+(`_draw()`) — bu rejaning o'zi 2-bosqich (29.3) uchun tavsiya qilgan
+yondashuv: texnik/mexanika xavflarini oddiy shakllar bilan sinash. Real
+san'at (rasm, animatsiya, ovoz — 23-bo'lim) keyingi bosqichlarda, kontent
+hajmi aniqlangach qo'shiladi.
 
-## Keyingi qadamlar (ixtiyoriy)
+## Keyingi bosqichlar
 
-- Xonalar orasiga eshiklar/koridorlar qo'shish
-- Tile-based art yoki animatsiyalar qo'shish
-- Bir nechta teshik turi (yong'in, elektr yong'ini) — har xil xavf
-- Inventar/qurol-yarog' tizimi
+29-bo'limga ko'ra: 2-bosqich (texnik xavflarni — bo'lak yuklash, 30
+dushman stressi, ko'op — sinash), 3-bosqich (HAVEN xonalari, uchta resurs,
+uchta vazifa turi, karkas/qism/yoritilgan ko'rinishdagi Ark namunasi).
