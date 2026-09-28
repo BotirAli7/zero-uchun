@@ -4,6 +4,13 @@ extends Area2D
 # generator, or the "signal" array that wins the game once enough
 # spare parts have been delivered.
 
+const ICON_TEXTURES := {
+	"oxygen": preload("res://assets/icon_oxygen.png"),
+	"power": preload("res://assets/icon_power.png"),
+	"food": preload("res://assets/icon_food.png"),
+	"signal": preload("res://assets/icon_signal.png"),
+}
+
 export(String, "oxygen", "power", "food", "signal") var kind := "oxygen"
 export var refill_rate := 20.0
 export var radius := 40.0
@@ -11,6 +18,7 @@ export var label_text := ""
 
 var player_in_range := false
 var _e_hint: Label
+var _icon_sprite: Sprite
 
 func _ready() -> void:
 	connect("body_entered", self, "_on_body_entered")
@@ -24,6 +32,14 @@ func _ready() -> void:
 	collision_layer = 4
 	collision_mask = 2
 
+	_icon_sprite = Sprite.new()
+	var texture: Texture = ICON_TEXTURES[kind]
+	_icon_sprite.texture = texture
+	var target_height := radius * 2.3
+	var s := target_height / texture.get_size().y
+	_icon_sprite.scale = Vector2(s, s)
+	add_child(_icon_sprite)
+
 	if label_text != "":
 		var label := Label.new()
 		label.text = label_text
@@ -35,8 +51,6 @@ func _ready() -> void:
 	_e_hint.rect_position = Vector2(-10.0, -radius - 26.0)
 	_e_hint.visible = false
 	add_child(_e_hint)
-
-	update()
 
 func _on_body_entered(body: Node) -> void:
 	if body.name == "Player":
@@ -62,23 +76,7 @@ func _physics_process(delta: float) -> void:
 func _process(_delta: float) -> void:
 	_e_hint.visible = player_in_range
 	if kind == "signal":
-		update()
-
-func _draw() -> void:
-	var fill_color: Color
-	match kind:
-		"oxygen":
-			fill_color = Color(0.2, 0.9, 0.5)
-		"power":
-			fill_color = Color(0.95, 0.8, 0.2)
-		"food":
-			fill_color = Color(0.85, 0.55, 0.25)
-		"signal":
-			if GameManager.spare_parts >= GameManager.REQUIRED_PARTS:
-				fill_color = Color(0.3, 0.9, 0.9)
-			else:
-				fill_color = Color(0.4, 0.2, 0.5)
-		_:
-			fill_color = Color(1, 1, 1)
-	draw_circle(Vector2.ZERO, radius, fill_color)
-	draw_circle(Vector2.ZERO, radius * 0.55, Color(0.05, 0.05, 0.08))
+		if GameManager.spare_parts >= GameManager.REQUIRED_PARTS:
+			_icon_sprite.modulate = Color(0.7, 1.4, 1.4)
+		else:
+			_icon_sprite.modulate = Color(0.55, 0.5, 0.65)

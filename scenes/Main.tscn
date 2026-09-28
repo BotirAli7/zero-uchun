@@ -16,34 +16,34 @@ script = ExtResource( 1 )
 position = Vector2( 600, 400 )
 script = ExtResource( 2 )
 size = Vector2( 1200, 800 )
-color = Color( 0.08, 0.08, 0.11, 1 )
+color = Color( 0.4, 0.4, 0.46, 1 )
 
 [node name="CommandFloor" type="Node2D" parent="StationRoot"]
 position = Vector2( 200, 200 )
 script = ExtResource( 2 )
 size = Vector2( 360, 360 )
-color = Color( 0.11, 0.15, 0.2, 1 )
+color = Color( 0.55, 0.65, 0.88, 1 )
 label_text = "KOMANDA"
 
 [node name="PowerFloor" type="Node2D" parent="StationRoot"]
 position = Vector2( 1000, 200 )
 script = ExtResource( 2 )
 size = Vector2( 360, 360 )
-color = Color( 0.2, 0.18, 0.1, 1 )
+color = Color( 0.88, 0.74, 0.4, 1 )
 label_text = "QUVVAT"
 
 [node name="OxygenFloor" type="Node2D" parent="StationRoot"]
 position = Vector2( 200, 600 )
 script = ExtResource( 2 )
 size = Vector2( 360, 360 )
-color = Color( 0.1, 0.2, 0.14, 1 )
+color = Color( 0.5, 0.88, 0.6, 1 )
 label_text = "KISLOROD"
 
 [node name="AirlockFloor" type="Node2D" parent="StationRoot"]
 position = Vector2( 1000, 600 )
 script = ExtResource( 2 )
 size = Vector2( 360, 360 )
-color = Color( 0.15, 0.15, 0.18, 1 )
+color = Color( 0.68, 0.68, 0.74, 1 )
 label_text = "OMBOR"
 
 [node name="Walls" type="Node2D" parent="StationRoot"]
