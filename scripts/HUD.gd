@@ -8,6 +8,8 @@ var hull_bar: ProgressBar
 var food_bar: ProgressBar
 var sol_label: Label
 var parts_label: Label
+var best_sol_label: Label
+var alert_label: Label
 var warning_overlay: ColorRect
 var warning_label: Label
 
@@ -18,6 +20,7 @@ var survived_label: Label
 var restart_button: Button
 
 var _was_critical := false
+var _alert_time_left := 0.0
 
 func _ready() -> void:
 	var root := Control.new()
@@ -39,6 +42,18 @@ func _ready() -> void:
 	parts_label = Label.new()
 	parts_label.rect_position = Vector2(16, 216)
 	root.add_child(parts_label)
+
+	best_sol_label = Label.new()
+	best_sol_label.rect_position = Vector2(16, 240)
+	best_sol_label.modulate = Color(1, 1, 1, 0.6)
+	best_sol_label.text = "Eng yaxshi natija: SOL %d" % GameManager.best_sol
+	root.add_child(best_sol_label)
+
+	alert_label = Label.new()
+	alert_label.rect_position = Vector2(WINDOW_SIZE.x / 2.0 - 120.0, 50.0)
+	alert_label.modulate = Color(1.0, 0.6, 0.2)
+	alert_label.visible = false
+	root.add_child(alert_label)
 
 	warning_overlay = ColorRect.new()
 	warning_overlay.rect_size = WINDOW_SIZE
@@ -107,7 +122,12 @@ func _make_bar(parent: Control, label_text: String) -> ProgressBar:
 	parent.add_child(bar)
 	return bar
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if _alert_time_left > 0.0:
+		_alert_time_left -= delta
+		if _alert_time_left <= 0.0:
+			alert_label.visible = false
+
 	if GameManager.is_game_over:
 		return
 
@@ -140,17 +160,27 @@ func _on_food_changed(value: float) -> void:
 func _on_parts_changed(value: int) -> void:
 	parts_label.text = "Ehtiyot qismlar: %d/%d" % [value, GameManager.REQUIRED_PARTS]
 
+func show_best_sol(value: int) -> void:
+	best_sol_label.text = "Eng yaxshi natija: SOL %d" % value
+
+func show_alert(text: String) -> void:
+	alert_label.text = text
+	alert_label.visible = true
+	_alert_time_left = 3.0
+
 func show_game_over(reason: String, survival_time: float) -> void:
 	end_panel.visible = true
 	end_title_label.text = "STANSIYA HALOKATI"
 	reason_label.text = reason
 	survived_label.text = "Siz SOL %d kunigacha (%d soniya) omon qoldingiz." % [GameManager.sol(), int(survival_time)]
+	show_best_sol(GameManager.best_sol)
 
 func show_victory(survival_time: float) -> void:
 	end_panel.visible = true
 	end_title_label.text = "SIGNAL YUBORILDI!"
 	reason_label.text = "Siz signal massivini faollashtirdingiz. Yordam yo'lda..."
 	survived_label.text = "SOL %d kunida qutqarildingiz (%d soniya)." % [GameManager.sol(), int(survival_time)]
+	show_best_sol(GameManager.best_sol)
 
 func _on_restart_pressed() -> void:
 	get_tree().reload_current_scene()

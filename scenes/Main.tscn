@@ -118,3 +118,6 @@ position = Vector2( 220, 260 )
 [node name="BreachSpawnTimer" type="Timer" parent="."]
 wait_time = 12.0
 autostart = true
+
+[node name="MeteorTimer" type="Timer" parent="."]
+one_shot = true

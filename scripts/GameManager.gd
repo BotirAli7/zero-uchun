@@ -20,7 +20,10 @@ var survival_time := 0.0
 var is_game_over := false
 var active_breaches := 0
 var signal_progress := 0.0
+var best_sol := 0
+var has_ever_won := false
 
+const SAVE_PATH := "user://savegame.save"
 const OXYGEN_DRAIN_RATE := 1.0
 const POWER_DRAIN_RATE := 0.6
 const FOOD_DRAIN_RATE := 0.35
@@ -33,6 +36,35 @@ const SOL_LENGTH := 60.0
 
 func _ready() -> void:
 	set_process(true)
+	_load_progress()
+
+func _load_progress() -> void:
+	var f := File.new()
+	if not f.file_exists(SAVE_PATH):
+		return
+	f.open(SAVE_PATH, File.READ)
+	var data = f.get_var()
+	f.close()
+	if typeof(data) == TYPE_DICTIONARY:
+		best_sol = data.get("best_sol", 0)
+		has_ever_won = data.get("has_ever_won", false)
+
+func _save_progress() -> void:
+	var f := File.new()
+	f.open(SAVE_PATH, File.WRITE)
+	f.store_var({"best_sol": best_sol, "has_ever_won": has_ever_won})
+	f.close()
+
+func _record_result(won: bool) -> void:
+	var changed := false
+	if sol() > best_sol:
+		best_sol = sol()
+		changed = true
+	if won and not has_ever_won:
+		has_ever_won = true
+		changed = true
+	if changed:
+		_save_progress()
 
 func sol() -> int:
 	return int(survival_time / SOL_LENGTH) + 1
@@ -103,12 +135,14 @@ func trigger_game_over(reason: String) -> void:
 	if is_game_over:
 		return
 	is_game_over = true
+	_record_result(false)
 	emit_signal("game_over", reason, survival_time)
 
 func trigger_victory() -> void:
 	if is_game_over:
 		return
 	is_game_over = true
+	_record_result(true)
 	emit_signal("victory", survival_time)
 
 func reset() -> void:

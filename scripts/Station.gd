@@ -10,6 +10,7 @@ export var radius := 40.0
 export var label_text := ""
 
 var player_in_range := false
+var _e_hint: Label
 
 func _ready() -> void:
 	connect("body_entered", self, "_on_body_entered")
@@ -28,6 +29,12 @@ func _ready() -> void:
 		label.text = label_text
 		label.rect_position = Vector2(-radius, radius + 4.0)
 		add_child(label)
+
+	_e_hint = Label.new()
+	_e_hint.text = "[E]"
+	_e_hint.rect_position = Vector2(-10.0, -radius - 26.0)
+	_e_hint.visible = false
+	add_child(_e_hint)
 
 	update()
 
@@ -53,6 +60,7 @@ func _physics_process(delta: float) -> void:
 			GameManager.try_activate_signal(delta)
 
 func _process(_delta: float) -> void:
+	_e_hint.visible = player_in_range
 	if kind == "signal":
 		update()
 

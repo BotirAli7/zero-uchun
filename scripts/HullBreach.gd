@@ -9,6 +9,7 @@ export var radius := 26.0
 var player_in_range := false
 var repair_progress := 0.0
 var _repaired := false
+var _e_hint: Label
 
 func _ready() -> void:
 	connect("body_entered", self, "_on_body_entered")
@@ -21,6 +22,12 @@ func _ready() -> void:
 	add_child(collision)
 	collision_layer = 4
 	collision_mask = 2
+
+	_e_hint = Label.new()
+	_e_hint.text = "[E]"
+	_e_hint.rect_position = Vector2(-10.0, -radius - 26.0)
+	_e_hint.visible = false
+	add_child(_e_hint)
 
 	GameManager.register_breach()
 	update()
@@ -35,6 +42,7 @@ func _on_body_exited(body: Node) -> void:
 
 func _process(_delta: float) -> void:
 	update()
+	_e_hint.visible = player_in_range and not _repaired
 
 func _physics_process(delta: float) -> void:
 	if _repaired:

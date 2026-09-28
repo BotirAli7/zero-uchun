@@ -42,6 +42,13 @@ To'rt resurs kuzatiladi — **Kislorod**, **Quvvat**, **Korpus butunligi**,
   paydo bo'la boshlaydi — oxirigacha yetish qiyinlashadi.
 - Resurslardan biri kritik darajaga (kislorod/korpus <25%, oziq-ovqat <15%)
   tushganda, ekran qizil miltillaydi va ogohlantirish ovozi eshitiladi.
+- Vaqti-vaqti bilan (20-35 soniyada bir) **"METEORIT YOMG'IRI!"** hodisasi
+  sodir bo'ladi — bir vaqtning o'zida 2 tagacha qo'shimcha teshik ochiladi.
+- Har bir generator/teshik/signal yonida turganingizda ustida **[E]**
+  ko'rsatkichi chiqadi — nima qilish kerakligini darhol bilasiz.
+- O'yinchi yurgan yo'nalishga qarab ko'zi buriladi (kamera esa aylanmaydi).
+- **Eng yaxshi natijangiz (SOL)** diskka saqlanadi va keyingi o'yinlarda
+  HUD'da ko'rsatiladi — har safar rekordingizni yangilashga harakat qiling.
 
 ## Loyiha tuzilishi
 
