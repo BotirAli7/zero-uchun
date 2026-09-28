@@ -6,23 +6,36 @@ extends Node
 signal oxygen_changed(value)
 signal power_changed(value)
 signal hull_changed(value)
+signal food_changed(value)
+signal parts_changed(value)
 signal game_over(reason, survival_time)
+signal victory(survival_time)
 
 var oxygen := 100.0
 var power := 100.0
 var hull := 100.0
+var food := 100.0
+var spare_parts := 0
 var survival_time := 0.0
 var is_game_over := false
 var active_breaches := 0
+var signal_progress := 0.0
 
 const OXYGEN_DRAIN_RATE := 1.0
 const POWER_DRAIN_RATE := 0.6
+const FOOD_DRAIN_RATE := 0.35
 const NO_POWER_OXYGEN_MULT := 2.5
 const BREACH_OXYGEN_DRAIN := 3.0
 const BREACH_HULL_DRAIN := 1.2
+const REQUIRED_PARTS := 5
+const SIGNAL_ACTIVATION_TIME := 4.0
+const SOL_LENGTH := 60.0
 
 func _ready() -> void:
 	set_process(true)
+
+func sol() -> int:
+	return int(survival_time / SOL_LENGTH) + 1
 
 func _process(delta: float) -> void:
 	if is_game_over:
@@ -32,6 +45,9 @@ func _process(delta: float) -> void:
 
 	power = clamp(power - POWER_DRAIN_RATE * delta, 0.0, 100.0)
 	emit_signal("power_changed", power)
+
+	food = clamp(food - FOOD_DRAIN_RATE * delta, 0.0, 100.0)
+	emit_signal("food_changed", food)
 
 	var o2_drain := OXYGEN_DRAIN_RATE
 	if power <= 0.0:
@@ -49,6 +65,8 @@ func _process(delta: float) -> void:
 		trigger_game_over("Kislorod tugadi. Siz stansiya ichida halok bo'ldingiz.")
 	elif hull <= 0.0:
 		trigger_game_over("Korpus butunlay buzildi. Stansiya vakuumga chiqib ketdi.")
+	elif food <= 0.0:
+		trigger_game_over("Oziq-ovqat tugadi. Siz ochlikdan halok bo'ldingiz.")
 
 func refill_oxygen(amount: float) -> void:
 	oxygen = clamp(oxygen + amount, 0.0, 100.0)
@@ -57,6 +75,23 @@ func refill_oxygen(amount: float) -> void:
 func refill_power(amount: float) -> void:
 	power = clamp(power + amount, 0.0, 100.0)
 	emit_signal("power_changed", power)
+
+func refill_food(amount: float) -> void:
+	food = clamp(food + amount, 0.0, 100.0)
+	emit_signal("food_changed", food)
+
+func add_spare_part() -> void:
+	if spare_parts >= REQUIRED_PARTS:
+		return
+	spare_parts += 1
+	emit_signal("parts_changed", spare_parts)
+
+func try_activate_signal(delta: float) -> void:
+	if is_game_over or spare_parts < REQUIRED_PARTS:
+		return
+	signal_progress += delta
+	if signal_progress >= SIGNAL_ACTIVATION_TIME:
+		trigger_victory()
 
 func register_breach() -> void:
 	active_breaches += 1
@@ -70,10 +105,19 @@ func trigger_game_over(reason: String) -> void:
 	is_game_over = true
 	emit_signal("game_over", reason, survival_time)
 
+func trigger_victory() -> void:
+	if is_game_over:
+		return
+	is_game_over = true
+	emit_signal("victory", survival_time)
+
 func reset() -> void:
 	oxygen = 100.0
 	power = 100.0
 	hull = 100.0
+	food = 100.0
+	spare_parts = 0
+	signal_progress = 0.0
 	survival_time = 0.0
 	is_game_over = false
 	active_breaches = 0

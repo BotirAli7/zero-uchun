@@ -50,6 +50,8 @@ func _physics_process(delta: float) -> void:
 func _complete_repair() -> void:
 	_repaired = true
 	GameManager.clear_breach()
+	GameManager.add_spare_part()
+	AudioManager.play_ding()
 	queue_free()
 
 func _draw() -> void:

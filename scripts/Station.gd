@@ -1,10 +1,10 @@
 extends Area2D
 
-# Fixed station the player can hold E next to: either the oxygen
-# generator or the power generator. "kind" picks which GameManager
-# resource it refills.
+# Fixed station the player can hold E next to: oxygen, power or food
+# generator, or the "signal" array that wins the game once enough
+# spare parts have been delivered.
 
-export(String, "oxygen", "power") var kind := "oxygen"
+export(String, "oxygen", "power", "food", "signal") var kind := "oxygen"
 export var refill_rate := 20.0
 export var radius := 40.0
 export var label_text := ""
@@ -40,13 +40,37 @@ func _on_body_exited(body: Node) -> void:
 		player_in_range = false
 
 func _physics_process(delta: float) -> void:
-	if player_in_range and Input.is_key_pressed(KEY_E):
-		if kind == "oxygen":
+	if not (player_in_range and Input.is_key_pressed(KEY_E)):
+		return
+	match kind:
+		"oxygen":
 			GameManager.refill_oxygen(refill_rate * delta)
-		else:
+		"power":
 			GameManager.refill_power(refill_rate * delta)
+		"food":
+			GameManager.refill_food(refill_rate * delta)
+		"signal":
+			GameManager.try_activate_signal(delta)
+
+func _process(_delta: float) -> void:
+	if kind == "signal":
+		update()
 
 func _draw() -> void:
-	var fill_color := Color(0.2, 0.9, 0.5) if kind == "oxygen" else Color(0.95, 0.8, 0.2)
+	var fill_color: Color
+	match kind:
+		"oxygen":
+			fill_color = Color(0.2, 0.9, 0.5)
+		"power":
+			fill_color = Color(0.95, 0.8, 0.2)
+		"food":
+			fill_color = Color(0.85, 0.55, 0.25)
+		"signal":
+			if GameManager.spare_parts >= GameManager.REQUIRED_PARTS:
+				fill_color = Color(0.3, 0.9, 0.9)
+			else:
+				fill_color = Color(0.4, 0.2, 0.5)
+		_:
+			fill_color = Color(1, 1, 1)
 	draw_circle(Vector2.ZERO, radius, fill_color)
 	draw_circle(Vector2.ZERO, radius * 0.55, Color(0.05, 0.05, 0.08))

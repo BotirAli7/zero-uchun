@@ -20,6 +20,7 @@ config/use_custom_user_dir=false
 [autoload]
 
 GameManager="*res://scripts/GameManager.gd"
+AudioManager="*res://scripts/AudioManager.gd"
 
 [display]
 

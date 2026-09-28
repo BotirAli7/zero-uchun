@@ -80,6 +80,19 @@ script = ExtResource( 4 )
 kind = "power"
 label_text = "Quvvat generatori (E)"
 
+[node name="FoodStation" type="Area2D" parent="StationRoot"]
+position = Vector2( 900, 520 )
+script = ExtResource( 4 )
+kind = "food"
+label_text = "Oziq-ovqat zaxirasi (E)"
+
+[node name="SignalArray" type="Area2D" parent="StationRoot"]
+position = Vector2( 1100, 680 )
+script = ExtResource( 4 )
+kind = "signal"
+radius = 46.0
+label_text = "Signal massivi (5 qism, E)"
+
 [node name="BreachPoints" type="Node2D" parent="."]
 
 [node name="BreachPoint1" type="Position2D" parent="BreachPoints"]

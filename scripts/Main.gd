@@ -1,7 +1,11 @@
 extends Node2D
 
+const BREACH_WAIT_MIN := 4.0
+const BREACH_WAIT_STEP := 0.4
+
 var _breach_scene := preload("res://scenes/HullBreach.tscn")
 var _occupied_points := []
+var _breach_wait_time := 12.0
 
 onready var _breach_points := $BreachPoints.get_children()
 onready var _hud := $HUD
@@ -10,10 +14,15 @@ onready var _spawn_timer := $BreachSpawnTimer
 func _ready() -> void:
 	GameManager.reset()
 	GameManager.connect("game_over", self, "_on_game_over")
+	GameManager.connect("victory", self, "_on_victory")
 	_spawn_timer.connect("timeout", self, "_on_spawn_timer_timeout")
 	VisualServer.set_default_clear_color(Color(0.03, 0.03, 0.06))
 
 func _on_spawn_timer_timeout() -> void:
+	# The station degrades over time: breaches start appearing more often.
+	_breach_wait_time = max(BREACH_WAIT_MIN, _breach_wait_time - BREACH_WAIT_STEP)
+	_spawn_timer.wait_time = _breach_wait_time
+
 	if GameManager.is_game_over:
 		return
 
@@ -38,3 +47,6 @@ func _on_breach_removed(point: Position2D) -> void:
 
 func _on_game_over(reason: String, survival_time: float) -> void:
 	_hud.show_game_over(reason, survival_time)
+
+func _on_victory(survival_time: float) -> void:
+	_hud.show_victory(survival_time)
