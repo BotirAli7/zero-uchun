@@ -1,19 +1,26 @@
 extends KinematicBody2D
 
-# E01 Sudraluvchi, E02 Chopqir, E03 Qichqiruvchi (9.1-jadval).
-# Holatlar: kutish, ovozni tekshirish, jang (yaqinlashish/hujum), halok
-# (9.3-bo'lim ro'yxatining soddalashtirilgan 1-bosqich ko'rinishi).
+# E01 Sudraluvchi, E02 Chopqir, E03 Qichqiruvchi, E04 Shishgan,
+# E05 Qalqonli (9.1-jadval). Holatlar: kutish, ovozni tekshirish, jang
+# (yaqinlashish/hujum), halok (9.3-bo'lim ro'yxatining soddalashtirilgan
+# ko'rinishi).
 
-export(String, "E01", "E02", "E03") var kind := "E01"
+export(String, "E01", "E02", "E03", "E04", "E05") var kind := "E01"
 
 const STATS := {
 	"E01": {"hp": 60.0, "speed": 105.0, "dmg": 15.0, "atk_interval": 1.5, "telegraph": 0.55, "attack_range": 45.0, "color": Color(0.55, 0.35, 0.3)},
 	"E02": {"hp": 45.0, "speed": 270.0, "dmg": 12.0, "atk_interval": 1.1, "telegraph": 0.65, "attack_range": 40.0, "color": Color(0.75, 0.6, 0.2)},
 	"E03": {"hp": 80.0, "speed": 90.0, "dmg": 0.0, "atk_interval": 20.0, "telegraph": 2.0, "attack_range": 160.0, "color": Color(0.5, 0.3, 0.6)},
+	"E04": {"hp": 130.0, "speed": 80.0, "dmg": 20.0, "atk_interval": 1.4, "telegraph": 0.8, "attack_range": 42.0, "color": Color(0.4, 0.55, 0.25)},
+	"E05": {"hp": 180.0, "speed": 90.0, "dmg": 16.0, "atk_interval": 2.0, "telegraph": 0.9, "attack_range": 46.0, "color": Color(0.4, 0.42, 0.5), "shielded": true},
 }
 
 const SIGHT_RANGE := 260.0
 const LOSE_TRACK_TIME := 6.0
+const SHIELD_FRONT_DOT := 0.3
+const SHIELD_MULT := 0.5
+
+const GAS_CLOUD_SCENE := preload("res://scenes/GasCloud.tscn")
 
 enum State { IDLE, INVESTIGATE, CHASE, TELEGRAPH, DEAD }
 
@@ -25,6 +32,7 @@ var _investigate_point := Vector2.ZERO
 var _state_timer := 0.0
 var _attack_cd := 0.0
 var _lose_track_timer := 0.0
+var facing_dir := Vector2.RIGHT
 
 func _ready() -> void:
 	_stats = STATS[kind]
@@ -49,14 +57,25 @@ func hear_noise(from_position: Vector2) -> void:
 	_state_timer = 4.0
 	GameState.log_event(kind + " shovqinni eshitdi.")
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, from_position = null) -> void:
 	if state == State.DEAD:
 		return
-	hp -= amount
+
+	var final_amount := amount
+	if _stats.get("shielded", false) and from_position != null:
+		var to_attacker: Vector2 = (from_position - global_position).normalized()
+		if facing_dir.dot(to_attacker) > SHIELD_FRONT_DOT:
+			final_amount *= SHIELD_MULT
+
+	hp -= final_amount
 	if hp <= 0.0:
 		state = State.DEAD
 		set_physics_process(false)
 		GameState.log_event(kind + " yo'q qilindi.")
+		if kind == "E04":
+			var gas = GAS_CLOUD_SCENE.instance()
+			get_parent().add_child(gas)
+			gas.global_position = global_position
 		var t := Timer.new()
 		t.wait_time = 0.3
 		t.one_shot = true
@@ -85,7 +104,8 @@ func _physics_process(delta: float) -> void:
 			_state_timer -= delta
 			var to_point := _investigate_point - global_position
 			if to_point.length() > 8.0:
-				move_and_slide(to_point.normalized() * _stats.speed * 0.6)
+				facing_dir = to_point.normalized()
+				move_and_slide(facing_dir * _stats.speed * 0.6)
 			if player and global_position.distance_to(player.global_position) <= SIGHT_RANGE:
 				_target = player
 				state = State.CHASE
@@ -99,6 +119,7 @@ func _physics_process(delta: float) -> void:
 				_attack_cd -= delta
 			var to_target: Vector2 = _target.global_position - global_position
 			var dist: float = to_target.length()
+			facing_dir = to_target.normalized()
 			if dist > SIGHT_RANGE * 1.4:
 				_lose_track_timer += delta
 				if _lose_track_timer > LOSE_TRACK_TIME:
@@ -113,6 +134,9 @@ func _physics_process(delta: float) -> void:
 			elif dist > _stats.attack_range:
 				move_and_slide(to_target.normalized() * _stats.speed)
 		State.TELEGRAPH:
+			# Yo'nalish qotib qoladi (hujumga tayyorgarlik): o'yinchi shu
+			# oynada yon/ortga o'tsa, "shielded" dushman qalqonsiz zarar
+			# oladi (9.1-bo'lim, E05 qarshi chorasi: yon/ort).
 			_state_timer -= delta
 			if _state_timer <= 0.0:
 				_resolve_attack()
@@ -133,6 +157,9 @@ func _resolve_attack() -> void:
 func _draw() -> void:
 	var color: Color = _stats.color if _stats else Color(1, 1, 1)
 	draw_circle(Vector2.ZERO, 16.0, color)
+	if _stats.get("shielded", false):
+		var shield_tip := facing_dir * 22.0
+		draw_line(Vector2.ZERO, shield_tip, Color(0.6, 0.8, 1.0), 5.0)
 	if state == State.TELEGRAPH:
 		draw_circle(Vector2.ZERO, 21.0, Color(1.0, 1.0, 1.0, 0.5))
 	elif state == State.INVESTIGATE:

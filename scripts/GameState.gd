@@ -1,12 +1,18 @@
 extends Node
 
-# 1-bosqich uchun sodda holat egasi, voqealar jurnali va saqlash asosi
-# (reja, 29.2-bo'lim).
+# Holat egasi, voqealar jurnali va saqlash (29.2, keyin 3-bosqich uchun
+# kengaytirilgan: uch resurs, obro', qutqarilgan mutaxassis).
 
 const SAVE_PATH := "user://kestrel_save.save"
 
-var cargo_delivered := false
-var carrying_cargo := false
+var resources := {"POWER": 0, "METAL": 0, "TECH": 0}
+var carrying = null  # null yoki {"type":"resource","kind":..,"amount":..} / {"type":"person","id":..}
+
+var primary_objective_delivered := false
+var generator_restored := false
+var aziz_rescued := false
+var dust_lantern_reputation := "neutral"  # "neutral" | "residents" | "self"
+
 var log_entries := []
 
 func _ready() -> void:
@@ -17,20 +23,74 @@ func log_event(text: String) -> void:
 	log_entries.append("[%0.1fs] %s" % [stamp, text])
 	print("LOG: " + text)
 
-func mark_cargo_delivered() -> void:
-	cargo_delivered = true
-	log_event("Yuk HAVENga topshirildi.")
+func is_carrying() -> bool:
+	return carrying != null
+
+func pick_up_resource(kind: String, amount: int, is_primary: bool = false) -> void:
+	carrying = {"type": "resource", "kind": kind, "amount": amount, "is_primary": is_primary}
+	log_event("%s topildi (%d)." % [kind, amount])
+
+func pick_up_person(person_id: String) -> void:
+	carrying = {"type": "person", "id": person_id}
+	log_event(person_id + " ko'tarildi.")
+
+func drop_carrying() -> void:
+	carrying = null
+
+func deliver_carrying() -> void:
+	if carrying == null:
+		return
+	if carrying.type == "resource":
+		add_resource(carrying.kind, carrying.amount)
+		log_event("%s HAVEN omboriga topshirildi (%d)." % [carrying.kind, carrying.amount])
+	elif carrying.type == "person":
+		if carrying.id == "aziz":
+			aziz_rescued = true
+			log_event("Aziz HAVENga yetkazildi.")
+			if dust_lantern_reputation == "neutral":
+				set_reputation("residents")
+	carrying = null
+	_save()
+
+func add_resource(kind: String, amount: int) -> void:
+	resources[kind] = resources.get(kind, 0) + amount
+
+func mark_primary_objective() -> void:
+	primary_objective_delivered = true
+	log_event("Asosiy rele topshirildi.")
+	_save()
+
+func mark_generator_restored() -> void:
+	generator_restored = true
+	log_event("Generator ishga tushirildi — elektr tiklandi.")
+	_save()
+
+func set_reputation(value: String) -> void:
+	dust_lantern_reputation = value
+	log_event("Dust Lantern obro'si: " + value)
 	_save()
 
 func reset_mission() -> void:
-	cargo_delivered = false
+	resources = {"POWER": 0, "METAL": 0, "TECH": 0}
+	carrying = null
+	primary_objective_delivered = false
+	generator_restored = false
+	aziz_rescued = false
+	dust_lantern_reputation = "neutral"
 	log_entries.clear()
 	_save()
 
 func _save() -> void:
 	var f := File.new()
 	f.open(SAVE_PATH, File.WRITE)
-	f.store_var({"cargo_delivered": cargo_delivered, "log": log_entries})
+	f.store_var({
+		"resources": resources,
+		"primary_objective_delivered": primary_objective_delivered,
+		"generator_restored": generator_restored,
+		"aziz_rescued": aziz_rescued,
+		"dust_lantern_reputation": dust_lantern_reputation,
+		"log": log_entries,
+	})
 	f.close()
 
 func _load() -> void:
@@ -40,6 +100,11 @@ func _load() -> void:
 	f.open(SAVE_PATH, File.READ)
 	var data = f.get_var()
 	f.close()
-	if typeof(data) == TYPE_DICTIONARY:
-		cargo_delivered = data.get("cargo_delivered", false)
-		log_entries = data.get("log", [])
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	resources = data.get("resources", {"POWER": 0, "METAL": 0, "TECH": 0})
+	primary_objective_delivered = data.get("primary_objective_delivered", false)
+	generator_restored = data.get("generator_restored", false)
+	aziz_rescued = data.get("aziz_rescued", false)
+	dust_lantern_reputation = data.get("dust_lantern_reputation", "neutral")
+	log_entries = data.get("log", [])

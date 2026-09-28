@@ -1,14 +1,12 @@
 extends KinematicBody2D
 
-# W01 Signal-9 to'pponcha va o'yinchi asosiy qiymatlari (5.2 va 6.1-jadval).
+# W01 Signal-9 va W02 Needle avtomati (6.1-jadval) + o'yinchi asosiy
+# qiymatlari (5.2-bo'lim).
 
-const WEAPON_DAMAGE := 24.0
-const WEAPON_FIRE_RATE := 3.0
-const WEAPON_MAG_SIZE := 12
-const WEAPON_RELOAD_TIME := 1.4
-const WEAPON_RANGE := 400.0
-const WEAPON_MAX_RANGE := 600.0
-const WEAPON_NOISE_RADIUS := 420.0
+const WEAPONS := {
+	"W01": {"name": "Signal-9", "dmg": 24.0, "rate": 3.0, "mag": 12, "reload": 1.4, "range": 400.0, "max_range": 600.0, "noise": 420.0},
+	"W02": {"name": "Needle", "dmg": 12.0, "rate": 8.0, "mag": 24, "reload": 1.8, "range": 320.0, "max_range": 480.0, "noise": 500.0},
+}
 const RAY_MASK := 1 | 4
 
 const WALK_SPEED := 220.0
@@ -18,18 +16,20 @@ const RUN_STAMINA_COST := 18.0
 const STAMINA_REGEN := 25.0
 const STAMINA_REGEN_DELAY := 0.8
 
+const RESOURCE_SCENE := preload("res://scenes/ResourcePickup.tscn")
+const SPECIALIST_SCENE := preload("res://scenes/Specialist.tscn")
+
 var health := 100.0
 var max_health := 100.0
 var stamina := 100.0
 var max_stamina := 100.0
 var _stamina_idle_timer := 0.0
 
-var ammo := WEAPON_MAG_SIZE
+var current_weapon := "W01"
+var ammo := {"W01": 12, "W02": 24}
 var reloading := false
 var _reload_timer := 0.0
 var _fire_cooldown := 0.0
-
-const CARGO_SCENE := preload("res://scenes/Cargo.tscn")
 
 var carrying_cargo := false
 var is_dead := false
@@ -39,7 +39,7 @@ signal died
 
 func _ready() -> void:
 	add_to_group("player")
-	carrying_cargo = GameState.carrying_cargo
+	carrying_cargo = GameState.is_carrying()
 	update()
 
 func _physics_process(delta: float) -> void:
@@ -48,6 +48,7 @@ func _physics_process(delta: float) -> void:
 
 	_handle_aim()
 	_handle_movement(delta)
+	_handle_weapon_switch()
 	_handle_shooting(delta)
 	_handle_drop()
 	update()
@@ -87,53 +88,77 @@ func _handle_movement(delta: float) -> void:
 		if _stamina_idle_timer >= STAMINA_REGEN_DELAY:
 			stamina = min(max_stamina, stamina + STAMINA_REGEN * delta)
 
+func _handle_weapon_switch() -> void:
+	if reloading:
+		return
+	if Input.is_key_pressed(KEY_1) and current_weapon != "W01":
+		current_weapon = "W01"
+	elif Input.is_key_pressed(KEY_2) and current_weapon != "W02":
+		current_weapon = "W02"
+
 func _handle_shooting(delta: float) -> void:
 	if carrying_cargo:
 		return
+
+	var w: Dictionary = WEAPONS[current_weapon]
 
 	if reloading:
 		_reload_timer -= delta
 		if _reload_timer <= 0.0:
 			reloading = false
-			ammo = WEAPON_MAG_SIZE
+			ammo[current_weapon] = w.mag
 		return
 
 	if _fire_cooldown > 0.0:
 		_fire_cooldown -= delta
 
-	if Input.is_key_pressed(KEY_R) and ammo < WEAPON_MAG_SIZE:
+	if Input.is_key_pressed(KEY_R) and ammo[current_weapon] < w.mag:
 		reloading = true
-		_reload_timer = WEAPON_RELOAD_TIME
+		_reload_timer = w.reload
 		return
 
-	if Input.is_mouse_button_pressed(BUTTON_LEFT) and _fire_cooldown <= 0.0 and ammo > 0:
-		_fire()
-		_fire_cooldown = 1.0 / WEAPON_FIRE_RATE
+	if Input.is_mouse_button_pressed(BUTTON_LEFT) and _fire_cooldown <= 0.0 and ammo[current_weapon] > 0:
+		_fire(w)
+		_fire_cooldown = 1.0 / w.rate
 
-func _fire() -> void:
-	ammo -= 1
+func _fire(w: Dictionary) -> void:
+	ammo[current_weapon] -= 1
 	var from := global_position
 	var dir := Vector2(1.0, 0.0).rotated(aim_angle)
-	var to := from + dir * WEAPON_MAX_RANGE
+	var to: Vector2 = from + dir * w.max_range
 	var space_state := get_world_2d().direct_space_state
 	var result := space_state.intersect_ray(from, to, [self], RAY_MASK)
-	NoiseManager.emit_noise(from, WEAPON_NOISE_RADIUS)
+	NoiseManager.emit_noise(from, w.noise)
 	if result and result.collider.has_method("take_damage"):
 		var dist: float = from.distance_to(result.position)
 		var falloff := 1.0
-		if dist > WEAPON_RANGE:
-			var t: float = clamp((dist - WEAPON_RANGE) / (WEAPON_MAX_RANGE - WEAPON_RANGE), 0.0, 1.0)
+		if dist > w.range:
+			var t: float = clamp((dist - w.range) / (w.max_range - w.range), 0.0, 1.0)
 			falloff = lerp(1.0, 0.6, t)
-		result.collider.take_damage(WEAPON_DAMAGE * falloff)
+		result.collider.take_damage(w.dmg * falloff, from)
 
 func _handle_drop() -> void:
-	if carrying_cargo and Input.is_key_pressed(KEY_G):
-		carrying_cargo = false
-		GameState.carrying_cargo = false
-		GameState.log_event("Yuk qo'yildi.")
-		var cargo = CARGO_SCENE.instance()
-		get_parent().add_child(cargo)
-		cargo.global_position = global_position + Vector2(0.0, 34.0)
+	if not (carrying_cargo and Input.is_key_pressed(KEY_G)):
+		return
+	var carrying = GameState.carrying
+	if carrying == null:
+		return
+	carrying_cargo = false
+	var drop_pos: Vector2 = global_position + Vector2(0.0, 34.0)
+	if carrying.type == "resource":
+		var pickup = RESOURCE_SCENE.instance()
+		pickup.kind = carrying.kind
+		pickup.amount = carrying.amount
+		pickup.is_primary = carrying.get("is_primary", false)
+		get_parent().add_child(pickup)
+		pickup.global_position = drop_pos
+	elif carrying.type == "person":
+		var person = SPECIALIST_SCENE.instance()
+		person.person_id = carrying.id
+		get_parent().add_child(person)
+		person.global_position = drop_pos
+	GameState.drop_carrying()
+	GameState.log_event("Yuk qo'yildi.")
 
 func take_damage(amount: float) -> void:
 	if is_dead:

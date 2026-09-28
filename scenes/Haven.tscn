@@ -50,11 +50,39 @@ script = ExtResource( 3 )
 [node name="ExitDoor" type="Area2D" parent="."]
 position = Vector2( 400, 82 )
 script = ExtResource( 4 )
-target_scene = "res://scenes/Yard.tscn"
-label_text = "Yard-01ga chiqish"
+target_scene = "res://scenes/DustLantern.tscn"
+label_text = "Dust Lanternga chiqish"
+
+[node name="RoomControl" type="Node2D" parent="."]
+position = Vector2( 210, 170 )
+script = ExtResource( 1 )
+size = Vector2( 140, 100 )
+color = Color( 0.16, 0.2, 0.26, 1 )
+label_text = "Boshqaruv"
+
+[node name="RoomWarehouse" type="Node2D" parent="."]
+position = Vector2( 590, 170 )
+script = ExtResource( 1 )
+size = Vector2( 140, 100 )
+color = Color( 0.22, 0.19, 0.14, 1 )
+label_text = "Ombor"
+
+[node name="RoomWorkshop" type="Node2D" parent="."]
+position = Vector2( 210, 430 )
+script = ExtResource( 1 )
+size = Vector2( 140, 100 )
+color = Color( 0.2, 0.2, 0.16, 1 )
+label_text = "Ustaxona"
+
+[node name="RoomClinic" type="Node2D" parent="."]
+position = Vector2( 590, 430 )
+script = ExtResource( 1 )
+size = Vector2( 140, 100 )
+color = Color( 0.18, 0.22, 0.2, 1 )
+label_text = "Klinika"
 
 [node name="Player" parent="." instance=ExtResource( 5 )]
-position = Vector2( 400, 450 )
+position = Vector2( 320, 460 )
 
 [node name="HUD" parent="." instance=ExtResource( 6 )]
-objective_text = "Yard-01ga kirib, yukni toping va HAVENga qaytaring."
+objective_text = "Dust Lanternga chiqib, releni topib qaytaring."
