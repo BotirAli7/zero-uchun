@@ -11,6 +11,7 @@ var carrying = null  # null yoki {"type":"resource","kind":..,"amount":..} / {"t
 var primary_objective_delivered := false
 var generator_restored := false
 var aziz_rescued := false
+var black_grid_powered := false
 var dust_lantern_reputation := "neutral"  # "neutral" | "residents" | "self"
 
 var log_entries := []
@@ -60,6 +61,11 @@ func mark_primary_objective() -> void:
 	log_event("Asosiy rele topshirildi.")
 	_save()
 
+func mark_black_grid_powered() -> void:
+	black_grid_powered = true
+	log_event("Black Grid: shahar chiroqlari yoqildi!")
+	_save()
+
 func mark_generator_restored() -> void:
 	generator_restored = true
 	log_event("Generator ishga tushirildi — elektr tiklandi.")
@@ -76,6 +82,7 @@ func reset_mission() -> void:
 	primary_objective_delivered = false
 	generator_restored = false
 	aziz_rescued = false
+	black_grid_powered = false
 	dust_lantern_reputation = "neutral"
 	log_entries.clear()
 	_save()
@@ -88,6 +95,7 @@ func _save() -> void:
 		"primary_objective_delivered": primary_objective_delivered,
 		"generator_restored": generator_restored,
 		"aziz_rescued": aziz_rescued,
+		"black_grid_powered": black_grid_powered,
 		"dust_lantern_reputation": dust_lantern_reputation,
 		"log": log_entries,
 	})
@@ -106,5 +114,6 @@ func _load() -> void:
 	primary_objective_delivered = data.get("primary_objective_delivered", false)
 	generator_restored = data.get("generator_restored", false)
 	aziz_rescued = data.get("aziz_rescued", false)
+	black_grid_powered = data.get("black_grid_powered", false)
 	dust_lantern_reputation = data.get("dust_lantern_reputation", "neutral")
 	log_entries = data.get("log", [])

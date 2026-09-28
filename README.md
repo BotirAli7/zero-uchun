@@ -8,10 +8,11 @@ bosqichlari (29-bo'lim) bo'yicha qurilmoqda:
   olish, 3 dushman, yuk, HAVENga qaytarish)
 - **3-bosqich** (hozirgi holat) — "asosiy tizimlarni jamlagan kichik
   namuna" (29.4-bo'lim): HAVENning zarur xonalari, **Dust Lantern**
-  sektorining to'liq yo'li (A–G, 11.4/11.5-bo'lim), uch resurs
-  (POWER/METAL/TECH), uchta vazifa turi (qaytarish, qutqarish, elektrni
-  tiklash), ikki qurol, bitta kuchli uchrashuv (qalqonli qo'riqchi),
-  bitta qutqariladigan mutaxassis (Aziz), bitta to'da javobi.
+  sektorining to'liq yo'li (A–G, 11.4/11.5-bo'lim), **Black Grid**ning
+  kichik podstansiya hududi, uch resurs (POWER/METAL/TECH), uchta
+  vazifa turi (qaytarish, qutqarish, elektrni tiklash), ikki qurol,
+  qochish qadami, bitta kuchli uchrashuv (qalqonli qo'riqchi), bitta
+  qutqariladigan mutaxassis (Aziz), bitta to'da javobi.
 
 2-bosqich (texnik stress-testlar: 30 dushman, ko'op) ataylab
 o'tkazib yuborildi — kontent tizimlarini birlashtirish ustuvor edi;
@@ -33,8 +34,9 @@ o'tkazib yuborildi — kontent tizimlarini birlashtirish ustuvor edi;
 | Sichqoncha chap tugmasi | Otish |
 | `1` / `2` | Signal-9 / Needle qurolini tanlash |
 | `R` | Qayta o'qlash |
-| `E` | Yukni/odamni ko'tarish, generatorni ishga tushirish |
+| `E` | Yukni/odamni ko'tarish, generator/zanjirni ishga tushirish |
 | `G` | Yukni qo'yish |
+| `Space` | Qochish qadami (110 birlik, 0,24 s, 30 chidamlilik, 0,7 s oraliq) |
 
 ## Dust Lantern sektori (A–G)
 
@@ -53,11 +55,19 @@ HAVEN darvozasidan chiqib, quyidagi xonalar orqali harakatlaning:
   qo'shimcha blokni olish obro'ni "o'zim uchun" tomon o'zgartiradi
   (13.5-bo'lim dilemmasi)
 - **F — Yong'in yo'lagi**: E03 Qichqiruvchi (hujum qilmaydi, faqat
-  boshqalarni ogohlantiradi), TECH resurs
+  boshqalarni ogohlantiradi), TECH resurs, **Black Gridga o'tuvchi eshik**
 - **G — Xizmat eshigi**: HAVENga qisqa qaytish yo'li
 
 Bir vaqtda faqat bitta yuk (resurs yoki odam) ko'tarish mumkin — og'ir
 yuk bilan yurish sekinlashadi va qurol ishlamaydi.
+
+## Black Grid — kichik podstansiya
+
+Dust Lanternning F xonasidan kiriladi. Uchta elektr zanjiridan
+(`CircuitA/B/C`) ikkitasini `E` bilan yoqing — shahar chiroqlari
+yoqiladi (fon rangi yorishadi, bu Arkning uch ko'rinishidan biri:
+"chiroqlari yoqilgan maydon") va 2 TECH mukofot beriladi. E02 Chopqir
+xonani qo'riqlaydi; POWER va TECH resurslari ham bor.
 
 ## Loyiha tuzilishi
 
@@ -72,11 +82,13 @@ scripts/
   Player.gd             # harakat, nishonga olish, 2 qurol (6.1)
   Enemy.gd               # E01–E05 holat mashinasi, qalqon mexanikasi (9.1)
   ResourcePickup.gd, Specialist.gd, DeliveryZone.gd
-  GeneratorSwitch.gd, GasCloud.gd, Door.gd, Wall.gd, Ground.gd, HUD.gd
-  DustLantern.gd        # sektor kontrolleri (to'da javobi, o'lim/qayta yuklash)
+  GeneratorSwitch.gd, CircuitSwitch.gd, GasCloud.gd
+  Door.gd, Wall.gd, Ground.gd, HUD.gd
+  DustLantern.gd, BlackGrid.gd   # sektor kontrollerlari
 scenes/
   Haven.tscn        # boshpana: 4 xona yorlig'i, topshirish nuqtasi
   DustLantern.tscn   # A–G yetti xonali sektor
+  BlackGrid.tscn      # kichik podstansiya
   Player.tscn, ResourcePickup.tscn, Specialist.tscn, GasCloud.tscn, HUD.tscn
 ```
 
@@ -87,14 +99,18 @@ hajmi aniqlangach qo'shiladi.
 
 ## Ma'lum cheklovlar (honest scope)
 
-- Qochish qadami (dodge-roll, 5.2-bo'lim) hali yo'q — E05 bilan jang
-  vaqtida faqat otish va harakatlanish bilan kurashiladi.
-- Faqat Dust Lantern qurilgan; qolgan 8 tashqi sektor yo'q.
+- Faqat Dust Lantern (to'liq) va Black Gridning bir kichik qismi
+  qurilgan; qolgan 8 tashqi sektor (yoki Black Gridning qolgan
+  xonalari) yo'q.
 - Faqat 2 qurol (W01, W02) va 5 dushman turi (E01–E05) qurilgan.
 - Syujet missiyalari (13-bo'lim, M01–M12) hali yo'q — bu erkin
   o'ynaladigan namunaviy sektor, chiziqli hikoya emas.
 - Ko-op, saqlashning to'liq versiyalash sinovi va 2-bosqichning stress
   testlari o'tkazilmagan.
+- E05 zarari hujjatning boshlang'ich qiymatidan (25) pasaytirildi (16)
+  — sinovda dodge hali yo'q holatda o'yinchi qo'riqchidan oldin
+  o'lgani aniqlandi; endi dodge qo'shilgani uchun bu raqam yana
+  balanslashtirilishi mumkin.
 
 ## Keyingi bosqichlar
 

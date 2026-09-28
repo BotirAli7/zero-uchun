@@ -51,7 +51,7 @@ func _ready() -> void:
 	root.add_child(objective_label)
 
 	var hint := Label.new()
-	hint.text = "WASD yurish, Shift yugurish, sichqoncha nishon, LMB otish, 1/2 qurol, R o'qlash, E olish, G qo'yish"
+	hint.text = "WASD yurish, Shift yugurish, Space qochish, sichqoncha nishon, LMB otish, 1/2 qurol, R o'qlash, E olish, G qo'yish"
 	hint.modulate = Color(1, 1, 1, 0.5)
 	hint.rect_position = Vector2(16, WINDOW_SIZE.y - 30.0)
 	root.add_child(hint)

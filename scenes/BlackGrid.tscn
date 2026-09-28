@@ -1,0 +1,81 @@
+[gd_scene load_steps=9 format=2]
+
+[ext_resource path="res://scripts/BlackGrid.gd" type="Script" id=1]
+[ext_resource path="res://scripts/Ground.gd" type="Script" id=2]
+[ext_resource path="res://scripts/Wall.gd" type="Script" id=3]
+[ext_resource path="res://scripts/CircuitSwitch.gd" type="Script" id=4]
+[ext_resource path="res://scripts/Door.gd" type="Script" id=5]
+[ext_resource path="res://scripts/Enemy.gd" type="Script" id=6]
+[ext_resource path="res://scenes/ResourcePickup.tscn" type="PackedScene" id=7]
+[ext_resource path="res://scenes/Player.tscn" type="PackedScene" id=8]
+
+[node name="BlackGrid" type="Node2D"]
+script = ExtResource( 1 )
+
+[node name="Floor" type="Node2D" parent="."]
+position = Vector2( 0, 0 )
+script = ExtResource( 2 )
+size = Vector2( 700, 500 )
+color = Color( 0.14, 0.16, 0.2, 1 )
+label_text = "BLACK GRID — KICHIK PODSTANSIYA"
+
+[node name="Walls" type="Node2D" parent="."]
+
+[node name="TopWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 0, -265 )
+script = ExtResource( 3 )
+size = Vector2( 740, 30 )
+
+[node name="BottomWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 0, 265 )
+script = ExtResource( 3 )
+size = Vector2( 740, 30 )
+
+[node name="LeftWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( -365, 0 )
+script = ExtResource( 3 )
+size = Vector2( 30, 530 )
+
+[node name="RightWall" type="StaticBody2D" parent="Walls"]
+position = Vector2( 365, 0 )
+script = ExtResource( 3 )
+size = Vector2( 30, 530 )
+
+[node name="CircuitA" type="Area2D" parent="."]
+position = Vector2( -200, -100 )
+script = ExtResource( 4 )
+circuit_id = "A"
+
+[node name="CircuitB" type="Area2D" parent="."]
+position = Vector2( 0, -150 )
+script = ExtResource( 4 )
+circuit_id = "B"
+
+[node name="CircuitC" type="Area2D" parent="."]
+position = Vector2( 200, -100 )
+script = ExtResource( 4 )
+circuit_id = "C"
+
+[node name="DoorToDustLantern" type="Area2D" parent="."]
+position = Vector2( 0, -230 )
+script = ExtResource( 5 )
+target_scene = "res://scenes/DustLantern.tscn"
+label_text = "Dust Lanternga qaytish"
+
+[node name="EnemyE02" type="KinematicBody2D" parent="."]
+position = Vector2( 0, 100 )
+script = ExtResource( 6 )
+kind = "E02"
+
+[node name="ResourcePower" parent="." instance=ExtResource( 7 )]
+position = Vector2( -150, 170 )
+kind = "POWER"
+amount = 2
+
+[node name="ResourceTech" parent="." instance=ExtResource( 7 )]
+position = Vector2( 150, 170 )
+kind = "TECH"
+amount = 2
+
+[node name="Player" parent="." instance=ExtResource( 8 )]
+position = Vector2( 0, -180 )

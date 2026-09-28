@@ -16,6 +16,11 @@ const RUN_STAMINA_COST := 18.0
 const STAMINA_REGEN := 25.0
 const STAMINA_REGEN_DELAY := 0.8
 
+const DODGE_DISTANCE := 110.0
+const DODGE_DURATION := 0.24
+const DODGE_STAMINA_COST := 30.0
+const DODGE_COOLDOWN := 0.7
+
 const RESOURCE_SCENE := preload("res://scenes/ResourcePickup.tscn")
 const SPECIALIST_SCENE := preload("res://scenes/Specialist.tscn")
 
@@ -34,6 +39,12 @@ var _fire_cooldown := 0.0
 var carrying_cargo := false
 var is_dead := false
 var aim_angle := 0.0
+
+var _dodging := false
+var _dodge_timer := 0.0
+var _dodge_dir := Vector2.ZERO
+var _dodge_cooldown := 0.0
+var _space_was_down := false
 
 signal died
 
@@ -69,6 +80,11 @@ func _handle_movement(delta: float) -> void:
 		input_vector.y -= 1
 	input_vector = input_vector.normalized()
 
+	_update_dodge(delta, input_vector)
+	if _dodging:
+		move_and_slide(_dodge_dir * (DODGE_DISTANCE / DODGE_DURATION))
+		return
+
 	var running := Input.is_key_pressed(KEY_SHIFT) and not carrying_cargo \
 		and input_vector != Vector2.ZERO and stamina > 0.0
 
@@ -88,6 +104,32 @@ func _handle_movement(delta: float) -> void:
 		if _stamina_idle_timer >= STAMINA_REGEN_DELAY:
 			stamina = min(max_stamina, stamina + STAMINA_REGEN * delta)
 
+func _update_dodge(delta: float, input_vector: Vector2) -> void:
+	# Qochish qadami (5.2): 110 birlik/0,24 s, 30 chidamlilik, 0,7 s
+	# oralig'i. Standartda mutlaq daxlsizlik yo'q — faqat qayta joylashish.
+	if _dodge_cooldown > 0.0:
+		_dodge_cooldown -= delta
+
+	var space_down := Input.is_key_pressed(KEY_SPACE)
+	var just_pressed := space_down and not _space_was_down
+	_space_was_down = space_down
+
+	if _dodging:
+		_dodge_timer -= delta
+		if _dodge_timer <= 0.0:
+			_dodging = false
+		return
+
+	if just_pressed and not carrying_cargo and _dodge_cooldown <= 0.0 and stamina >= DODGE_STAMINA_COST:
+		var dir := input_vector
+		if dir == Vector2.ZERO:
+			dir = Vector2(1.0, 0.0).rotated(aim_angle)
+		_dodge_dir = dir.normalized()
+		_dodging = true
+		_dodge_timer = DODGE_DURATION
+		_dodge_cooldown = DODGE_COOLDOWN
+		stamina = max(0.0, stamina - DODGE_STAMINA_COST)
+
 func _handle_weapon_switch() -> void:
 	if reloading:
 		return
@@ -97,7 +139,7 @@ func _handle_weapon_switch() -> void:
 		current_weapon = "W02"
 
 func _handle_shooting(delta: float) -> void:
-	if carrying_cargo:
+	if carrying_cargo or _dodging:
 		return
 
 	var w: Dictionary = WEAPONS[current_weapon]

@@ -156,6 +156,12 @@ position = Vector2( 0, 160 )
 kind = "TECH"
 amount = 2
 
+[node name="DoorToBlackGrid" type="Area2D" parent="RoomF"]
+position = Vector2( 150, -280 )
+script = ExtResource( 4 )
+target_scene = "res://scenes/BlackGrid.tscn"
+label_text = "Black Gridga o'tish"
+
 [node name="RoomG" type="Node2D" parent="."]
 position = Vector2( 1728, 192 )
 
