@@ -1,0 +1,8 @@
+# Godot 3 generated files
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+
+# Godot 4+ generated files (in case of later upgrade)
+.godot/
