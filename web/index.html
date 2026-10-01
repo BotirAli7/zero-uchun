@@ -53,6 +53,8 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
 .result-head{display:flex;flex-direction:column;gap:10px;min-width:0}
 .rank{font:700 clamp(72px,16vw,112px)/.85 var(--display);color:var(--accent);min-width:1ch;text-align:center}
 .rank.s{color:var(--friend)}.rank.none{color:var(--muted)}
+.settings{display:grid;grid-template-columns:auto 1fr;gap:12px 16px;align-items:center}
+.settings input[type=range]{width:100%;accent-color:var(--accent)}
 .note{font:500 13px/1.45 var(--body);color:var(--muted);margin:0}
 .fail{color:var(--danger)}.ok{color:var(--friend)}
 #touch{position:fixed;inset:0;pointer-events:none;z-index:5}
@@ -88,7 +90,8 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
       <li><b class="q">QUVVAT</b><span>Generator binosidagi energiya bloki, shimoli-sharq</span></li>
       <li><b class="m">METALL</b><span>Pochta omboridagi metall yuki, shimoli-g'arb</span></li>
       <li><b class="t">TEXNIKA</b><span>Shtab binosidagi ma'lumot diski, janubi-sharq</span></li>
-      <li><b>EVAK</b><span>Uchala yuk bilan shimoli-sharqdagi maydonchada 8 soniya turing</span></li>
+      <li><b class="q">AZIZ</b><span>Kulbadagi garovdagi elektr ustasini ozod qiling va tirik olib chiqing</span></li>
+      <li><b>EVAK</b><span>Yuklar va Aziz bilan shimoli-sharqdagi maydonchada 8 soniya turing</span></li>
     </ul>
     <div style="display:flex;flex-direction:column;gap:8px">
       <span class="label" id="diffLabel">Qiyinlik</span>
@@ -96,6 +99,13 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
         <button type="button" data-diff="easy" aria-pressed="false">Oson</button>
         <button type="button" data-diff="normal" aria-pressed="true">O'rta</button>
         <button type="button" data-diff="hard" aria-pressed="false">Qiyin</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span class="label" id="gfxLabel">Grafika</span>
+      <div class="seg" role="group" aria-labelledby="gfxLabel">
+        <button type="button" data-gfx="3d" aria-pressed="true">3D</button>
+        <button type="button" data-gfx="2d" aria-pressed="false">2D (tez)</button>
       </div>
     </div>
     <button type="button" class="go" id="startBtn">Operatsiyani boshlash</button>
@@ -123,7 +133,17 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
   <div class="panel">
     <div class="eyebrow">Operatsiya to'xtatildi</div>
     <h2>PAUZA</h2>
+    <div class="settings">
+      <label class="label" for="volRange">Ovoz balandligi</label>
+      <input type="range" id="volRange" min="0" max="100" value="70">
+      <span class="label" id="gfxLabelP">Grafika</span>
+      <div class="seg" role="group" aria-labelledby="gfxLabelP">
+        <button type="button" data-gfx="3d" aria-pressed="true">3D</button>
+        <button type="button" data-gfx="2d" aria-pressed="false">2D (tez)</button>
+      </div>
+    </div>
     <button type="button" class="go" id="resumeBtn">Davom etish</button>
+    <button type="button" class="go" id="restartBtn" style="background:transparent;color:var(--ink);border:1px solid var(--line)">Qayta boshlash</button>
     <button type="button" class="go" id="quitBtn" style="background:transparent;color:var(--ink);border:1px solid var(--line)">Menyuga chiqish</button>
   </div>
 </section>
@@ -856,7 +876,7 @@ function paintSoldier(c, st, gl, sw, dead) {
   c.fillStyle = '#15130f';
   c.beginPath(); c.ellipse(sw * 6.5, -6, 6.6, 4, 0, 0, TAU); c.ellipse(-sw * 6.5, 6, 6.6, 4, 0, 0, TAU); c.fill();
   // weapon
-  if (!dead) {
+  if (!dead && gl > 0) {
     c.fillStyle = '#0f1113'; rr(c, 2, 1.3, gl - 2, 4.8, 1.4); c.fill();
     c.fillStyle = '#2c3236'; c.fillRect(6, 1.5, Math.min(12, gl - 10), 1.2);
     c.fillStyle = '#1c2124'; c.fillRect(gl - 6, 2.1, 6, 3.2);
@@ -902,6 +922,7 @@ function paintSoldier(c, st, gl, sw, dead) {
   };
   let hands;
   if (dead) { arm([-1, 11, 10, 20]); arm([-1, -11, 8, -21]); hands = [[10, 20], [8, -21]]; }
+  else if (gl === 0) { arm([-1, 11, 4, 15]); arm([-1, -11, 4, -15]); hands = [[4, 15], [4, -15]]; }
   else if (gl < 22) { arm([-1, 11, 13, 4.5]); arm([-1, -11, 14.5, 2.2]); hands = [[13, 4.5], [14.5, 2.2]]; }
   else { const fx = 22 + (gl > 36 ? 3 : 0); arm([-1, 11, 10, 5.5]); arm([-1, -11, fx, 2.5]); hands = [[10, 5.5], [fx, 2.5]]; }
   for (const h of hands) { c.fillStyle = '#23221c'; c.beginPath(); c.arc(h[0], h[1], 2.9, 0, TAU); c.fill(); c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 0.8; c.stroke(); }
@@ -929,7 +950,7 @@ function soldierSprite(sk, st, gl, frame) {
   return cc;
 }
 function drawSoldier(c, x, y, a, st, o) {
-  const gl = o.gun || 32, sc = o.scale || 1;
+  const gl = o.gun === 0 ? 0 : (o.gun || 32), sc = o.scale || 1;
   c.save(); c.translate(x, y);
   if (!o.dead) {
     const sg = c.createRadialGradient(5, 7, 2, 5, 7, 20 * sc);
@@ -1077,7 +1098,7 @@ function initAudio() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     actx = new AC();
-    master = actx.createGain(); master.gain.value = 0.55;
+    master = actx.createGain(); master.gain.value = 0.8 * (typeof volume === 'number' ? volume : 0.7);
     const comp = actx.createDynamicsCompressor(); master.connect(comp); comp.connect(actx.destination);
     noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -1158,9 +1179,9 @@ const distVol = (x, y) => clamp(1 - dist(x, y, P.x, P.y) / 1500, 0, 1) ** 1.5;
 
 // ───────────────────────── game data ─────────────────────────
 const WEAPONS = [
-  { name: 'KS-47 avtomat', short: 'KS-47', dmg: 30, rate: 10, mag: 30, reserve: 150, reload: 2.1, spread: 0.03, bloom: 0.012, maxBloom: 0.1, speed: 2200, pellets: 1, range: 900, auto: true, noise: 900, kick: 2.2, snd: 'ar', gun: 34, art: 'rifle' },
-  { name: "Bo'ri-12 drobovik", short: "BO'RI-12", dmg: 15, rate: 1.4, mag: 7, reserve: 35, reload: 2.5, spread: 0.15, bloom: 0, maxBloom: 0, speed: 1800, pellets: 9, range: 420, auto: false, noise: 950, kick: 6, snd: 'sg', gun: 30, art: 'shotgun' },
-  { name: "Signal-9 to'pponcha", short: 'SIGNAL-9', dmg: 26, rate: 5, mag: 12, reserve: 72, reload: 1.3, spread: 0.025, bloom: 0.02, maxBloom: 0.08, speed: 2000, pellets: 1, range: 650, auto: false, noise: 600, kick: 1.5, snd: 'pt', gun: 18, art: 'pistol' },
+  { name: 'KS-47 avtomat', short: 'KS-47', dmg: 30, rate: 10, mag: 30, reserve: 150, reload: 2.1, spread: 0.03, bloom: 0.012, maxBloom: 0.1, speed: 2200, pellets: 1, range: 900, auto: true, noise: 700, kick: 2.2, snd: 'ar', gun: 34, art: 'rifle' },
+  { name: "Bo'ri-12 drobovik", short: "BO'RI-12", dmg: 15, rate: 1.4, mag: 7, reserve: 35, reload: 2.5, spread: 0.15, bloom: 0, maxBloom: 0, speed: 1800, pellets: 9, range: 420, auto: false, noise: 750, kick: 6, snd: 'sg', gun: 30, art: 'shotgun' },
+  { name: "Signal-9 to'pponcha", short: 'SIGNAL-9', dmg: 26, rate: 5, mag: 12, reserve: 72, reload: 1.3, spread: 0.025, bloom: 0.02, maxBloom: 0.08, speed: 2000, pellets: 1, range: 650, auto: false, noise: 450, kick: 1.5, snd: 'pt', gun: 18, art: 'pistol' },
 ];
 const ETYPES = {
   rifle: { name: 'Avtomatchi', hp: 100, walk: 70, run: 150, vis: 640, fov: 2.0, rate: 8, burst: [3, 6], pause: [0.55, 1.2], dmg: 9, spread: 0.075, range: 760, pref: 360, turn: 5, react: 1, gun: 32, snd: 'ar', art: 'rifle' },
@@ -1169,9 +1190,9 @@ const ETYPES = {
   sniper: { name: 'Snayper', hp: 80, walk: 60, run: 120, vis: 1150, fov: 1.2, rate: 0.5, burst: [1, 1], pause: [2.4, 3.2], dmg: 48, spread: 0.012, range: 1300, pref: 0, turn: 1.6, react: 1.4, gun: 46, snd: 'sniper', static: true, art: 'rifle' },
 };
 const DIFFS = {
-  easy: { dmg: 0.55, spread: 1.45, react: 1.0, detect: 0.7, gren: 0.25, score: 0.8, label: 'Oson' },
-  normal: { dmg: 1, spread: 1, react: 0.62, detect: 1, gren: 0.55, score: 1, label: "O'rta" },
-  hard: { dmg: 1.35, spread: 0.75, react: 0.42, detect: 1.3, gren: 0.85, score: 1.4, label: 'Qiyin' },
+  easy: { dmg: 0.42, spread: 1.6, react: 1.15, detect: 0.65, gren: 0.25, score: 0.8, label: 'Oson' },
+  normal: { dmg: 0.72, spread: 1.15, react: 0.78, detect: 0.9, gren: 0.55, score: 1, label: "O'rta" },
+  hard: { dmg: 1.05, spread: 0.85, react: 0.5, detect: 1.2, gren: 0.85, score: 1.4, label: 'Qiyin' },
 };
 let diffKey = store.get('ko_diff') || 'normal';
 if (!DIFFS[diffKey]) diffKey = 'normal';
@@ -1207,10 +1228,13 @@ const OBJECTIVES_DEF = [
   { id: 'm', name: 'METALL yuki', short: 'METALL', x: 620, y: 260, color: '#c9d1d6' },
   { id: 't', name: 'TEXNIKA diski', short: 'TEXNIKA', x: 2080, y: 1270, color: '#5ccfbf' },
 ];
+const HOSTAGE_POS = { x: 2492, y: 712 };
+const INTEL_POS = [[1000, 560], [1880, 1620], [640, 1300], [2420, 628]];
 const CRATE_POS = [[450, 300], [1100, 200], [1650, 520], [2420, 700], [500, 1350], [1100, 1700], [1700, 1300], [2160, 1600], [1250, 1150], [2650, 1000], [150, 1100], [880, 780]];
 
 // ───────────────────────── state ─────────────────────────
 let state = 'menu';
+let HS = null, intel = [];
 let P, enemies, bullets, particles, casings, grenades, pickups, crates, objectives, floats, feed, lights, pings, dmgDirs;
 let cam = { x: 1400, y: 1000 }, shake = 0, gameTime = 0, banner = null, generatorOn = false;
 const RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1231,12 +1255,14 @@ function newGame() {
   resetDoors();
   crates = CRATE_POS.map(p => ({ x: p[0], y: p[1], opened: false }));
   objectives = OBJECTIVES_DEF.map(o => Object.assign({ taken: false }, o));
+  HS = { x: HOSTAGE_POS.x, y: HOSTAGE_POS.y, a: Math.PI, hp: 70, state: 'captive', path: null, pi: 0, pathAge: 9, pathGoal: null, directT: 0, direct: false, moving: false, walk: 0, va: 1, flash: 0 };
+  intel = INTEL_POS.map(p => ({ x: p[0], y: p[1], taken: false }));
   ext = { active: false, hold: 0, need: 8, heliZ: 1 };
-  stats = { kills: 0, shots: 0, hits: 0, dmgTaken: 0, takedowns: 0, start: 0 };
+  stats = { kills: 0, shots: 0, hits: 0, dmgTaken: 0, takedowns: 0, intel: 0, start: 0 };
   gameTime = 0; shake = 0; generatorOn = false; deathTimer = 0;
   heliOut = { t: 0 };
   cam.x = P.x; cam.y = P.y;
-  showBanner('Operatsiya boshlandi', 'Uchta yukni toping. Xaritada belgilangan.', '#5ccfbf');
+  showBanner('Operatsiya boshlandi', "Uchta yukni oling va garovdagi Azizni qutqaring.", '#5ccfbf');
 }
 function makeEnemy(type, route, baseA) {
   const Tt = ETYPES[type];
@@ -1456,6 +1482,7 @@ function explode(g) {
     const d = dist(g.x, g.y, e.x, e.y);
     if (d < R && !losBlocked(g.x, g.y, e.x, e.y)) damageEnemy(e, 190 * (1 - d / R) + 25, Math.atan2(e.y - g.y, e.x - g.x), true);
   }
+  if (HS && (HS.state === 'follow' || HS.state === 'captive')) { const dh = dist(g.x, g.y, HS.x, HS.y); if (dh < R && !losBlocked(g.x, g.y, HS.x, HS.y)) damageHostage(110 * (1 - dh / R), g.x, g.y); }
   const dp = dist(g.x, g.y, P.x, P.y);
   if (dp < R && !losBlocked(g.x, g.y, P.x, P.y)) damagePlayer((130 * (1 - dp / R) + 10) * 0.8, g.x, g.y);
   makeNoise(g.x, g.y, 1200);
@@ -1468,7 +1495,7 @@ function damagePlayer(d, fx, fy) {
     const absorb = Math.min(P.armor, d * 0.6);
     P.armor -= absorb; d -= absorb;
   }
-  P.hp -= d; P.hurt = Math.min(1, P.hurt + 0.45); P.healT = 0;
+  P.hp -= d; P.hurt = Math.min(1, P.hurt + 0.45); P.healT = 0; P.lastHit = gameTime;
   dmgDirs.push({ a: Math.atan2(fy - P.y, fx - P.x), t: 1.2 });
   blood(P.x, P.y, Math.atan2(P.y - fy, P.x - fx), 4);
   shake = Math.max(shake, 5);
@@ -1606,6 +1633,7 @@ function updatePlayer(dt) {
   let target = null, best = 50;
   for (const o of objectives) if (!o.taken) { const d = dist(P.x, P.y, o.x, o.y); if (d < best) { best = d; target = o; } }
   for (const c of crates) if (!c.opened) { const d = dist(P.x, P.y, c.x, c.y); if (d < best) { best = d; target = c; } }
+  if (HS && HS.state === 'captive') { const d = dist(P.x, P.y, HS.x, HS.y); if (d < best + 6) { best = d; target = HS; } }
   if (target !== P.interactTarget) P.interactT = 0;
   P.interactTarget = target;
   if (!target && P.doorTarget && pressed.has('KeyE')) {
@@ -1613,10 +1641,17 @@ function updatePlayer(dt) {
   }
   if (target && keys.has('KeyE')) {
     P.interactT += dt;
-    const need = target.id ? 1.4 : 0.7;
-    if (P.interactT >= need) { P.interactT = 0; if (target.id) takeObjective(target); else openCrate(target); }
+    const need = target === HS ? 1.2 : target.id ? 1.4 : 0.7;
+    if (P.interactT >= need) { P.interactT = 0; if (target === HS) freeHostage(); else if (target.id) takeObjective(target); else openCrate(target); }
   } else P.interactT = 0;
 
+  // intel documents
+  for (const it of intel) if (!it.taken && dist(P.x, P.y, it.x, it.y) < 26) {
+    it.taken = true; stats.intel++;
+    addFloat(it.x, it.y - 22, `RAZVEDKA ${stats.intel}/${intel.length}`, '#8fb7ff');
+    addFeed(`Razvedka hujjati topildi (${stats.intel}/${intel.length})`, '#8fb7ff');
+    sfx('pick', 0.6) || blip(980, 0.1, 0.08, 'sine');
+  }
   // pickups
   for (const pk of pickups) {
     if (pk.taken) continue;
@@ -1625,6 +1660,8 @@ function updatePlayer(dt) {
   pickups = pickups.filter(p => !p.taken);
   P.hurt = Math.max(0, P.hurt - dt * 0.9);
   P.flash -= dt;
+  // light wounds recover after 5 s out of contact, up to 60
+  if (!P.dead && P.hp < 60 && gameTime - (P.lastHit || -99) > 5) P.hp = Math.min(60, P.hp + 4 * dt);
 }
 function applyLoot(kind, x, y) {
   if (kind === 'ammo') {
@@ -1643,6 +1680,55 @@ function openCrate(c) {
   applyLoot(k1, c.x, c.y);
   if (Math.random() < 0.6) { const k2 = kinds[randi(0, kinds.length - 1)]; setTimeout(() => state === 'play' && applyLoot(k2, c.x, c.y - 18), 250); }
 }
+function freeHostage() {
+  HS.state = 'follow'; HS.hold = 0;
+  addFloat(HS.x, HS.y - 28, 'AZIZ OZOD!', '#f2c94c');
+  showBanner('Aziz ozod qilindi', "U ortingizdan yuradi. Uni tirik evakuatsiya qiling.", '#f2c94c');
+  sfx('door_open', 0.5);
+  // the guards raised the alarm: a squad moves on the hut
+  for (const p of [[2760, 640, 'rifle'], [2760, 700, 'scout'], [2600, 1000, 'rifle']]) {
+    if (dist(p[0], p[1], P.x, P.y) < 360) continue;
+    const e = makeEnemy(p[2], [[p[0], p[1]]], Math.PI);
+    e.state = 'alert'; e.target = { x: HS.x + rand(-60, 60), y: HS.y + rand(-60, 60) }; e.alertT = 40; e.sus = 0.6;
+    enemies.push(e);
+  }
+  addFeed('Radio: asir qochdi, kulbaga boring!', '#e5484d');
+  checkExtraction();
+}
+function updateHostage(dt) {
+  if (!HS || HS.state !== 'follow') return;
+  HS.flash -= dt;
+  const d = dist(HS.x, HS.y, P.x, P.y);
+  if (d > 64 && !P.dead) {
+    const sp = d > 240 ? 235 : d > 120 ? 190 : 150;
+    moveEnemyTo(HS, P.x, P.y, P.crouch ? Math.min(sp, 110) : sp, dt, true);
+  } else { HS.moving = false; HS.a = turnTo(HS.a, Math.atan2(P.y - HS.y, P.x - HS.x), 4 * dt); }
+  for (const e of enemies) {           // keep a little distance from the player's line of fire
+    if (e.dead) continue;
+    const dd = dist(e.x, e.y, HS.x, HS.y);
+    if (dd < 26 && dd > 0.1) { HS.x -= (e.x - HS.x) / dd * (26 - dd) * 0.5; HS.y -= (e.y - HS.y) / dd * (26 - dd) * 0.5; }
+  }
+  const dp = dist(HS.x, HS.y, P.x, P.y);
+  if (dp < 28 && dp > 0.1) { HS.x -= (P.x - HS.x) / dp * (28 - dp) * 0.5; HS.y -= (P.y - HS.y) / dp * (28 - dp) * 0.5; }
+  collide(HS, 12);
+}
+function damageHostage(d, fx, fy) {
+  if (!HS || HS.state === 'dead' || HS.state === 'extracted') return;
+  HS.hp -= d; HS.flash = 0.12;
+  blood(HS.x, HS.y, Math.atan2(HS.y - fy, HS.x - fx), 5);
+  if (HS.hp <= 0) {
+    HS.state = 'dead'; HS.hp = 0;
+    bakeBloodPool(HS.x, HS.y, 28);
+    showBanner('Aziz halok bo\'ldi', 'Operatsiya muvaffaqiyatsiz', '#e5484d');
+    deathTimer = 2.4; HS.failed = true;
+  } else if (Math.random() < 0.4) addFloat(HS.x, HS.y - 26, 'AZIZ YARALANDI', '#e5484d');
+}
+function checkExtraction() {
+  if (ext.active || objectives.some(o => !o.taken) || !HS || HS.state !== 'follow') return;
+  ext.active = true;
+  showBanner('Evakuatsiya ochildi', "Aziz bilan shimoli-sharqdagi EVAK maydonchasiga boring.", '#f0a23b');
+  spawnReinforcements();
+}
 function takeObjective(o) {
   o.taken = true;
   if (o.id === 'q') generatorOn = true;
@@ -1650,9 +1736,8 @@ function takeObjective(o) {
   blip(880, 0.12, 0.1, 'sine'); setTimeout(() => blip(1320, 0.16, 0.1, 'sine'), 120);
   const left = objectives.filter(x => !x.taken).length;
   if (left === 0) {
-    ext.active = true;
-    showBanner('Evakuatsiya ochildi', "Shimoli-sharqdagi EVAK maydonchasiga boring. Dushman kuchaytirmasi yo'lda.", '#f0a23b');
-    spawnReinforcements();
+    if (HS.state === 'follow') checkExtraction();
+    else showBanner('Uchala yuk olindi', "Endi kulbadagi Azizni ozod qiling (shimoli-sharq).", '#f2c94c');
   } else {
     showBanner(o.name + ' olindi', `Yana ${left} ta yuk qoldi.`, o.color);
   }
@@ -1674,16 +1759,18 @@ function makeNoise(x, y, r) {
   for (const e of enemies) {
     if (e.dead || e.state === 'combat') continue;
     if (dist(x, y, e.x, e.y) > r) continue;
-    e.state = 'alert'; e.target = { x: x + rand(-60, 60), y: y + rand(-60, 60) }; e.alertT = 10; e.sus = Math.max(e.sus, 0.5); e.path = null;
+    let tx = x + rand(-60, 60), ty = y + rand(-60, 60);
+    if (insideSolid(tx, ty, 16)) { tx = x; ty = y; }
+    e.state = 'alert'; e.target = { x: tx, y: ty }; e.alertT = 10; e.sus = Math.max(e.sus, 0.5); e.path = null;
   }
 }
 function enterCombat(e) {
   if (e.state === 'combat') return;
-  e.state = 'combat'; e.sus = 1; e.shout = 1.6; e.burst = 0; e.fireCd = 0;
+  e.state = 'combat'; e.sus = 1; e.shout = 1.6; e.burst = 0; e.fireCd = 0; e.shots = 0;
   e.reactT = DIFF.react * e.T.react + rand(0, 0.25); e.lostT = 0;
   for (const o of enemies) {
     if (o === e || o.dead || o.state === 'combat') continue;
-    if (dist(o.x, o.y, e.x, e.y) < 560) { o.state = 'alert'; o.target = { x: P.x, y: P.y }; o.alertT = 12; o.sus = Math.max(o.sus, 0.6); o.path = null; }
+    if (dist(o.x, o.y, e.x, e.y) < 420) { o.state = 'alert'; o.target = { x: P.x, y: P.y }; o.alertT = 12; o.sus = Math.max(o.sus, 0.6); o.path = null; }
   }
 }
 function damageEnemy(e, d, fromA, explosive) {
@@ -1717,7 +1804,12 @@ function shade(hex) {
 }
 function enemyFire(e) {
   const m = muzzle(e.x, e.y, e.a, e.T.gun, e.T.scale || 1, e.T.art);
-  const sp = e.T.spread * DIFF.spread * (e.moving ? 1.35 : 1) * (P.moving ? 1.15 : 1);
+  const dP = dist(e.x, e.y, P.x, P.y);
+  e.shots = (e.shots || 0) + 1;
+  const sp = e.T.spread * DIFF.spread * (e.moving ? 1.35 : 1) * (P.moving ? 1.15 : 1) * (P.crouch ? 0.9 : 1)
+    * (e.type === 'sniper' ? 1 : clamp(0.7 + dP / 650, 0.8, 1.9))       // harder to hit at range
+    * (e.shots <= 3 && e.type !== 'sniper' ? 2.1 : 1)                       // first rounds go wide
+    * (e.suppT > 0 ? 1.8 : 1);                                              // suppressed
   const a = e.a + gauss() * sp;
   const speed = e.type === 'sniper' ? 2800 : 1700;
   bullets.push({ x: m.x, y: m.y, px: m.x, py: m.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dmg: e.T.dmg * DIFF.dmg, own: 'e', trav: 0, range: e.T.range, max: e.T.range * 1.3, sn: e.type === 'sniper' });
@@ -1766,7 +1858,7 @@ function updateEnemy(e, dt) {
   }
   e.sees = sees;
   e.moving = false;
-  for (const d of doors) if (!d.open && Math.abs(e.x - (d.x + d.w / 2)) < 36 && Math.abs(e.y - (d.y + d.h / 2)) < 36 && e.state !== 'patrol' || (!d.open && e.state === 'patrol' && dist(e.x, e.y, d.x + d.w / 2, d.y + d.h / 2) < 30)) setDoor(d, true, 'hand');
+  for (const d of doors) if (!d.open && dist(e.x, e.y, d.x + d.w / 2, d.y + d.h / 2) < 44) setDoor(d, true, 'hand');
   if (e.stunT > 0) { e.stunT -= dt; e.a += Math.sin(e.stunT * 20) * dt * 2; return; }
   if (sees) {
     e.lastKnown = { x: P.x, y: P.y }; e.lostT = 0;
@@ -1808,10 +1900,23 @@ function updateEnemy(e, dt) {
     if (Tt.static) { e.a = turnTo(e.a, Math.atan2(e.target.y - e.y, e.target.x - e.x), 1.5 * dt); }
     else {
       const left = moveEnemyTo(e, e.target.x, e.target.y, Tt.run * 0.75, dt, true);
+      if (!e.moving && left >= 30 && e.pathAge > 1 && !e.path) e.target = { x: e.x, y: e.y };
       if (left < 30) { e.look += dt * 1.6; e.a += Math.sin(e.look) * dt * 1.8; }
     }
     if (e.alertT <= 0) { e.state = 'patrol'; e.sus = 0.2; e.path = null; }
   } else if (e.state === 'combat') {
+    e.suppT = (e.suppT || 0) - dt; e.coverCd = (e.coverCd || 0) - dt;
+    if (!Tt.static && !e.cover && e.coverCd <= 0 && (e.suppT > 0 || e.hp < Tt.hp * 0.55)) {
+      e.cover = findCover(e); e.coverCd = rand(2.5, 4);
+      if (e.cover) { e.coverHold = rand(1.3, 2.8); e.burst = 0; }
+    }
+    if (e.cover) {
+      const left = moveEnemyTo(e, e.cover.x, e.cover.y, Tt.run, dt, !sees);
+      if (sees) e.a = turnTo(e.a, toP, Tt.turn * dt);
+      if (left < 16) { e.coverHold -= dt; e.a = turnTo(e.a, Math.atan2(e.lastKnown.y - e.y, e.lastKnown.x - e.x), 3 * dt); }
+      if (e.coverHold <= 0 || left > 450) { e.cover = null; e.lostT = 0; e.reactT = Math.max(e.reactT, 0.25); }
+      return;
+    }
     if (sees) {
       e.reactT -= dt;
       e.a = turnTo(e.a, toP, Tt.turn * dt);
@@ -1856,6 +1961,18 @@ function updateEnemy(e, dt) {
     }
   }
 }
+// a reachable spot near the enemy that the player cannot see
+function findCover(e) {
+  let best = null, bs = 1e9;
+  for (const r of [70, 120, 170, 230]) for (let i = 0; i < 16; i++) {
+    const a = i / 16 * TAU, x = e.x + Math.cos(a) * r, y = e.y + Math.sin(a) * r;
+    if (x < 30 || y < 30 || x > MW - 30 || y > MH - 30 || insideSolid(x, y, 18)) continue;
+    if (dist(x, y, P.x, P.y) < 160 || !losBlocked(x, y, P.x, P.y)) continue;
+    const sc = r + (walkLine(e.x, e.y, x, y, 12) ? 0 : 140);
+    if (sc < bs) { bs = sc; best = { x, y }; }
+  }
+  return best;
+}
 function separateEnemies() {
   for (let i = 0; i < enemies.length; i++) {
     const a = enemies[i]; if (a.dead) continue;
@@ -1882,12 +1999,15 @@ function updateBullets(dt) {
     if (b.own === 'p') {
       for (const e of enemies) {
         if (e.dead) continue;
+        if (!b.dead && Math.abs(nx - e.x) < 75 && Math.abs(ny - e.y) < 75 && dist(nx, ny, e.x, e.y) < 75) { e.suppT = 1.3; if (e.state !== 'combat' && !e.dead) { e.lastKnown = { x: P.x, y: P.y }; enterCombat(e); } }
         const t = segCircle(b.x, b.y, nx, ny, e.x, e.y, 16 * (e.T.scale || 1));
         if (t >= 0 && t < bestT) { bestT = t; hit = e; kind = 'enemy'; }
       }
+      if (HS && (HS.state === 'follow' || HS.state === 'captive')) { const th = segCircle(b.x, b.y, nx, ny, HS.x, HS.y, 12); if (th >= 0 && th < bestT && b.trav > 30) { bestT = th; hit = H; kind = 'hostage'; } }
     } else if (!P.dead) {
       const t = segCircle(b.x, b.y, nx, ny, P.x, P.y, P.r);
       if (t >= 0 && t < bestT) { bestT = t; hit = P; kind = 'player'; }
+      if (HS && (HS.state === 'follow' || HS.state === 'captive')) { const th = segCircle(b.x, b.y, nx, ny, HS.x, HS.y, 13); if (th >= 0 && th < bestT) { bestT = th; hit = H; kind = 'hostage'; } }
       // near-miss whizz
       if (!b.whizz && dist(nx, ny, P.x, P.y) < 70) { b.whizz = true; shake = Math.max(shake, 1.5); }
     }
@@ -1907,6 +2027,8 @@ function updateBullets(dt) {
         damageEnemy(hit, b.dmg * fall, a, false);
         stats.hits++; hitMarker = 0.18;
         blip(1900, 0.03, 0.04);
+      } else if (kind === 'hostage') {
+        damageHostage(b.dmg * fall * 0.8, b.x - b.vx * 0.1, b.y - b.vy * 0.1);
       } else if (kind === 'player') {
         damagePlayer(b.dmg * fall, b.x - b.vx * 0.1, b.y - b.vy * 0.1);
       }
@@ -1988,6 +2110,7 @@ function update(dt) {
   pathBudget = 3;
   updateDoors(dt);
   updatePlayer(dt);
+  updateHostage(dt);
   for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
   separateEnemies();
   updateBullets(dt);
@@ -1998,11 +2121,12 @@ function update(dt) {
   heliOut.t += dt;
   // extraction
   if (ext.active && !P.dead) {
-    const inZone = dist(P.x, P.y, EXT.x, EXT.y) < EXT.r;
-    if (inZone) ext.hold += dt; else ext.hold = Math.max(0, ext.hold - dt * 0.5);
+    const inZone = dist(P.x, P.y, EXT.x, EXT.y) < EXT.r, hIn = HS.state === 'follow' && dist(HS.x, HS.y, EXT.x, EXT.y) < EXT.r + 25;
+    if (inZone && hIn) ext.hold += dt; else ext.hold = Math.max(0, ext.hold - dt * 0.5);
+    if (inZone && !hIn && !ext.warned) { ext.warned = true; addFeed('Aziz maydonchada bo\'lishi kerak', '#f2c94c'); }
     if (ext.hold >= ext.need) return endGame(true);
   }
-  if (P.dead) { deathTimer -= dt; if (deathTimer <= 0) return endGame(false); }
+  if (P.dead || (HS && HS.failed)) { deathTimer -= dt; if (deathTimer <= 0) return endGame(false); }
   // camera
   let offx = 0, offy = 0;
   const rs = stickVec(sticks.R);
@@ -2236,7 +2360,18 @@ function drawDoors2D(inView) {
     ctx.restore();
   }
 }
-function use3D() { return !!(window.__R3 && window.__R3.ready); }
+let gfxMode = store.get('ko_gfx') === '2d' ? '2d' : '3d';
+function use3D() { return gfxMode === '3d' && !!(window.__R3 && window.__R3.ready); }
+function applyGfx() {
+  document.querySelectorAll('[data-gfx]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gfx === gfxMode)));
+  const gl = document.getElementById('gl');
+  if (gfxMode === '3d') {
+    if (window.__R3 && !window.__R3.ready && !window.__R3.booting && window.__R3.boot) window.__R3.boot();
+    if (gl) gl.style.display = '';
+    if (window.__R3 && window.__R3.ready) cv.classList.add('over3d');
+  } else { if (gl) gl.style.display = 'none'; cv.classList.remove('over3d'); }
+  paintGround();
+}
 function render2DOverlay(dt, t, vis, inView, worldT, vx, vy, vw, vh) {
   if (ext.active) {
     ctx.strokeStyle = `rgba(240,162,59,${0.5 + Math.sin(t * 4) * 0.25})`; ctx.lineWidth = 4;
@@ -2383,6 +2518,7 @@ function render(dt) {
     e.lx = e.x; e.ly = e.y;
     ctx.globalAlpha = 1;
   }
+  if (!use3D()) drawHostage2D();
   if (P.dead) {
     if (sprReady) drawCorpse(ctx, P.x, P.y, P.a, 'player', 'rifle', 1);
     else drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { gun: WEAPONS[P.wi].gun, dead: true });
@@ -2507,7 +2643,29 @@ function drawHeli(x, y, a, sc, t) {
   ctx.fillStyle = 'rgba(200,200,190,.06)'; ctx.beginPath(); ctx.arc(0, 0, 82, 0, TAU); ctx.fill();
   ctx.restore();
 }
+const STYLE_CIV = { cloth: '#56657a', vest: '#3e4756', helmet: '#2e2620', pack: '#3e4756', band: '#f2c94c', cap: true };
+function drawHostage2D() {
+  if (!HS || HS.state === 'extracted') return;
+  if (HS.state === 'dead') return;
+  drawSoldier(ctx, HS.x, HS.y, HS.a, STYLE_CIV, { gun: 0, walk: HS.walk, moving: HS.moving, scale: HS.state === 'captive' ? 0.92 : 1, flash: Math.max(0, HS.flash) / 0.12 });
+}
 function drawWorldMarkers(t, inView) {
+  // hostage ring + intel folders (unlit so they read in the dark)
+  if (HS && (HS.state === 'captive' || HS.state === 'follow')) {
+    ctx.strokeStyle = HS.state === 'captive' ? `rgba(242,201,76,${0.45 + Math.sin(t * 4) * 0.25})` : 'rgba(242,201,76,.55)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(HS.x, HS.y, 22, 0, TAU); ctx.stroke();
+    if (HS.state === 'follow' && HS.hp < 70) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(HS.x - 16, HS.y + 24, 32, 4); ctx.fillStyle = '#f2c94c'; ctx.fillRect(HS.x - 16, HS.y + 24, 32 * HS.hp / 70, 4); }
+  }
+  for (const it of intel) {
+    if (it.taken || !inView(it.x, it.y, 30) || dist(P.x, P.y, it.x, it.y) > VIS_R || losBlocked(P.x, P.y, it.x, it.y)) continue;
+    ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(0.3);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(-8, -5, 18, 13);
+    ctx.fillStyle = '#c8b27a'; ctx.fillRect(-9, -7, 18, 13);
+    ctx.fillStyle = '#e8e2cc'; ctx.fillRect(-7, -5, 14, 2); ctx.fillRect(-7, -1, 10, 1.5); ctx.fillRect(-7, 2, 12, 1.5);
+    ctx.fillStyle = '#b8423a'; ctx.fillRect(3, -7, 5, 3);
+    ctx.restore();
+    ctx.strokeStyle = `rgba(143,183,255,${0.35 + Math.sin(t * 5 + it.x) * 0.25})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(it.x, it.y, 16, 0, TAU); ctx.stroke();
+  }
   // enemy awareness glyphs
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const e of enemies) {
@@ -2573,8 +2731,8 @@ function drawWorldMarkers(t, inView) {
   // interaction prompt
   const it = P.interactTarget;
   if (it && !P.dead) {
-    const label = it.id ? `${it.short} yukini olish` : 'Qutini ochish';
-    const need = it.id ? 1.4 : 0.7;
+    const label = it === HS ? 'Azizni ozod qilish' : it.id ? `${it.short} yukini olish` : 'Qutini ochish';
+    const need = it === HS ? 1.2 : it.id ? 1.4 : 0.7;
     const y = it.y - 40;
     ctx.font = "600 13px 'Chakra Petch', sans-serif";
     const keyTxt = (IS_TOUCH || touchUsed) ? 'OLISH' : 'E';
@@ -2772,7 +2930,7 @@ function drawHUD(t) {
   const ox = pad, oy = touch ? pad + 90 : pad + 6;
   const objW = narrow ? Math.min(200, W - mmW - pad * 2 - 24) : 214;
   if (!touch || H > 420) {
-    ctx.fillStyle = 'rgba(8,11,10,.72)'; ctx.fillRect(ox - 8, oy - 6, objW, 26 + objectives.length * 20 + 20);
+    ctx.fillStyle = 'rgba(8,11,10,.72)'; ctx.fillRect(ox - 8, oy - 6, objW, 26 + (objectives.length + 2) * 20 + 20);
     hudText('VAZIFALAR', ox, oy + 10, 10, '#f0a23b');
     objectives.forEach((o, i) => {
       const y = oy + 32 + i * 20;
@@ -2781,13 +2939,24 @@ function drawHUD(t) {
       hudText(narrow ? o.short : o.name, ox + 18, y, narrow ? 12 : 13, o.taken ? '#8f978b' : '#e8e4d6', 'left', 500, 'Barlow');
       if (!o.taken) hudText(Math.round(dist(P.x, P.y, o.x, o.y) / 10) + ' m', ox + objW - 16, y, 11, '#8f978b', 'right');
     });
-    const ey = oy + 32 + objectives.length * 20;
+    {
+      const y = oy + 32 + objectives.length * 20, hc = '#f2c94c';
+      ctx.strokeStyle = hc; ctx.lineWidth = 1.5; ctx.strokeRect(ox, y - 9, 10, 10);
+      if (HS.state === 'follow' || HS.state === 'extracted') { ctx.fillStyle = hc; ctx.fillRect(ox + 2, y - 7, 6, 6); }
+      hudText(narrow ? 'AZIZ' : 'Azizni qutqarish', ox + 18, y, narrow ? 12 : 13, HS.state === 'dead' ? '#e5484d' : '#e8e4d6', 'left', 500, 'Barlow');
+      hudText(HS.state === 'captive' ? Math.round(dist(P.x, P.y, HS.x, HS.y) / 10) + ' m' : HS.state === 'follow' ? Math.ceil(HS.hp) + ' HP' : HS.state === 'dead' ? 'HALOK' : '', ox + objW - 16, y, 11, HS.state === 'follow' && HS.hp < 35 ? '#e5484d' : '#8f978b', 'right');
+      const y2 = y + 20;
+      hudText(`Razvedka ${stats.intel}/${intel.length}`, ox + 18, y2, narrow ? 11 : 12, '#8fb7ff', 'left', 500, 'Barlow');
+    }
+    const ey = oy + 32 + (objectives.length + 2) * 20;
     hudText(ext.active ? `${narrow ? 'Evak' : 'Evakuatsiya'}: ${Math.round(dist(P.x, P.y, EXT.x, EXT.y) / 10)} m` : (narrow ? 'Evak: yopiq' : 'Evakuatsiya: yopiq'), ox, ey, 12, ext.active ? '#f0a23b' : '#8f978b', 'left', 600, 'Barlow');
   }
 
   // ── offscreen objective arrows
   const targets = objectives.filter(o => !o.taken).map(o => ({ x: o.x, y: o.y, col: o.color, label: o.short }));
   if (ext.active) targets.push({ x: EXT.x, y: EXT.y, col: '#f0a23b', label: 'EVAK' });
+  if (HS.state === 'captive' && !objectives.some(o => !o.taken)) targets.push({ x: HS.x, y: HS.y, col: '#f2c94c', label: 'AZIZ' });
+  else if (HS.state === 'follow' && dist(HS.x, HS.y, P.x, P.y) > 260) targets.push({ x: HS.x, y: HS.y, col: '#f2c94c', label: 'AZIZ' });
   for (const tg of targets) {
     const sx = W / 2 + (tg.x - cam.x) * ZOOM, sy = H / 2 + (tg.y - cam.y) * ZOOM;
     const m = 46;
@@ -2899,9 +3068,10 @@ function endGame(win) {
   $('endTitle').textContent = win ? 'Evakuatsiya qilindi' : 'Operatsiya muvaffaqiyatsiz';
   $('endTitle').className = win ? 'ok' : 'fail';
   $('endText').textContent = win
-    ? 'Uchala yuk HAVENga yetkazildi. Vertolyot maydonchadan ko\'tarildi.'
+    ? `Uchala yuk va Aziz HAVENga yetkazildi. Aziz ${Math.ceil(HS.hp)} HP bilan qutqarildi.`
+    : HS.failed ? 'Aziz halok bo\'ldi. Uni o\'q chizig\'idan uzoqroq tuting va dushmanlarni oldinroq yo\'q qiling.'
     : (objs ? `Siz ${objs} ta yukni olgan edingiz, lekin evakuatsiyaga yeta olmadingiz.` : 'Siz yiqildingiz. Ehtiyotroq harakat qiling: shovqin dushmanlarni chaqiradi.');
-  let score = objs * 800 + stats.kills * 100 + stats.takedowns * 150 + acc * 10 - Math.round(stats.dmgTaken) * 2;
+  let score = objs * 800 + stats.kills * 100 + stats.takedowns * 150 + acc * 10 - Math.round(stats.dmgTaken) * 2 + stats.intel * 250 + (win ? Math.round(HS.hp) * 10 : 0);
   if (win) score += 1500 + Math.max(0, 600 - gameTime) * 4;
   score = Math.max(0, Math.round(score * DIFF.score));
   const rank = !win ? '—' : score >= 7000 ? 'S' : score >= 5200 ? 'A' : score >= 3800 ? 'B' : 'C';
@@ -2909,7 +3079,7 @@ function endGame(win) {
   $('endRank').className = 'rank' + (rank === 'S' ? ' s' : '');
   $('endRank').hidden = !win;
   $('endStats').innerHTML = [
-    [score, 'Ball'], [fmtTime(gameTime), 'Vaqt'], [stats.kills, "Yo'q qilindi"], [stats.takedowns, 'Jimgina'], [acc + '%', 'Aniqlik'], [`${objs}/3`, 'Yuklar'], [Math.round(stats.dmgTaken), 'Olingan zarar']
+    [score, 'Ball'], [fmtTime(gameTime), 'Vaqt'], [stats.kills, "Yo'q qilindi"], [stats.takedowns, 'Jimgina'], [acc + '%', 'Aniqlik'], [`${objs}/3`, 'Yuklar'], [`${stats.intel}/${intel.length}`, 'Razvedka'], [Math.round(stats.dmgTaken), 'Olingan zarar']
   ].map(s => `<div><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
   let bestTxt = '';
   if (win) {
@@ -2930,6 +3100,13 @@ function refreshBest() {
   }).filter(Boolean);
   $('best').textContent = parts.length ? 'Rekordlar: ' + parts.join(' · ') : '';
 }
+document.querySelectorAll('[data-gfx]').forEach(b => b.addEventListener('click', () => { gfxMode = b.dataset.gfx; store.set('ko_gfx', gfxMode); applyGfx(); }));
+document.querySelectorAll('[data-gfx]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gfx === gfxMode)));
+let volume = parseFloat(store.get('ko_vol'));
+if (!(volume >= 0)) volume = 0.7;
+$('volRange').value = String(Math.round(volume * 100));
+$('volRange').addEventListener('input', e => { volume = e.target.value / 100; store.set('ko_vol', String(volume)); if (master) master.gain.value = 0.8 * volume; });
+$('restartBtn').addEventListener('click', startGame);
 document.querySelectorAll('[data-diff]').forEach(b => {
   b.setAttribute('aria-pressed', String(b.dataset.diff === diffKey));
   b.addEventListener('click', () => {
@@ -2979,9 +3156,10 @@ window.__G = {
   get ext() { return ext; }, get lights() { return lights; }, get weather() { return weather; },
   get groundDirty() { return groundDirty; }, set groundDirty(v) { groundDirty = v; },
   doors, doorAngle, get SAMPLES() { return SAMPLES; }, ground, obs, trees, LAMPS, INTERIOR, buildings, WEAPONS, EXT, LZ_IN, MW, MH, M2W, IS_TOUCH,
-  on3DReady() { cv.classList.add('over3d'); paintGround(); },
+  get want3D() { return gfxMode === '3d'; }, get H() { return HS; }, get intel() { return intel; },
+  on3DReady() { if (gfxMode === '3d') cv.classList.add('over3d'); paintGround(); },
 };
-window.__ko = { get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, obs, startGame, findPath, insideSolid, kill: e => killEnemy(e, 0.5) };
+window.__ko = { get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, obs, startGame, findPath, insideSolid, kill: e => killEnemy(e, 0.5), keys, pressed, mouse, get cam() { return cam; }, get ZOOM() { return ZOOM; }, get objectives() { return objectives; }, get ext() { return ext; }, get stats() { return stats; }, get gameTime() { return gameTime; }, doors, setDoor, losBlocked, get H() { return HS; } };
 })();
 </script>
 <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>

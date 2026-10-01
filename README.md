@@ -5,7 +5,9 @@ uslubidagi tepadan ko'rinadigan taktik shuter. Hech narsa o'rnatish shart emas:
 faylni brauzerda oching. Telefonda sensorli boshqaruv avtomatik yoqiladi.
 
 **Vazifa:** Dust Lantern sektoridan uchta yukni olib chiqish (QUVVAT bloki,
-METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
+METALL yuki, TEXNIKA diski), kulbadagi garovdagi elektr ustasi Azizni ozod
+qilish va u bilan birga EVAK maydonchasida 8 soniya turish. Xaritada 4 ta
+yashirin razvedka hujjati bor (qo'shimcha ball).
 
 **Asosiy imkoniyatlar:**
 - Ko'rish maydoni (fog of war): devor orqasidagi dushmanlar ko'rinmaydi
@@ -26,6 +28,10 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
   bir lahza dovdirab qoladi); yopiq eshik ko'rish, o'q va granatani to'sadi,
   dushmanlar ham eshik ochadi
 - Haqiqiy qurol, eshik, qadam va momaqaldiroq ovozlari (CC0 yozuvlar)
+- Dushmanlar o'q ostida qolganda yoki yaralanganda o'zi pana topib yashirinadi;
+  bosim ostida aniqligi pasayadi, birinchi o'qlari keng tarqaladi
+- Yengil jarohatlar 5 soniya jangdan tashqarida 60 HP gacha tiklanadi
+- Pauza menyusida ovoz balandligi, 3D/2D grafika va qayta boshlash
 - Grafika: dinamik yoritish (o'yinchi fonari, ko'cha chiroqlari, xona
   chiroqlari, otishma chaqnashi), 2.5D balandlikdagi devorlar, konteynerlar
   va mashinalar, soyali askar spraytlari, mebel, ko'lmaklar, piyodalar

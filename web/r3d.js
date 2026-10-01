@@ -28,7 +28,9 @@ let crate3 = [], obj3 = [], pick3 = [], doors3 = [];
 let L = {};               // lights
 
 // ───────────────────────── boot ─────────────────────────
-(async function boot() {
+R3.boot = async function boot() {
+  if (R3.booting || R3.ready) return;
+  R3.booting = true;
   try {
     if (!G) throw new Error('game bridge missing');
     M = G.M2W;
@@ -77,7 +79,9 @@ let L = {};               // lights
     R3.failed = true;
     const gl = document.getElementById('gl'); if (gl) gl.remove();
   }
-})();
+  R3.booting = false;
+};
+if (G && G.want3D) R3.boot();
 
 function resize() {
   if (!renderer) return;
@@ -351,7 +355,7 @@ function buildWeapon(kind) {
   }
   return g;
 }
-const TINT = { player: 0xffffff, rifle: 0x5d6a80, gunner: 0x2a2c30, scout: 0x8c8460, sniper: 0x6f8a52 };
+const TINT = { hostage: 0x3a4a66, player: 0xffffff, rifle: 0x5d6a80, gunner: 0x2a2c30, scout: 0x8c8460, sniper: 0x6f8a52 };
 const ART = { rifle: 'rifle', shotgun: 'shotgun', pistol: 'pistol' };
 function makeUnit(kind) {
   const root = SkeletonUtils.clone(lib.soldier.scene);
@@ -400,6 +404,7 @@ function setAction(u, name, scale) {
 function poseArms(u, o) {
   const { bones, weapons } = u;
   for (const w of Object.values(weapons)) w.visible = false;
+  if (o.art === 'none') return;
   u.root.updateMatrixWorld(true);
   const ra = new THREE.Vector3(), la = new THREE.Vector3(), sp = new THREE.Vector3();
   bones.RightArm.getWorldPosition(ra); bones.LeftArm.getWorldPosition(la); bones.Spine2.getWorldPosition(sp);
@@ -512,6 +517,10 @@ R3.render = function (dt, sx, sy, vis) {
   };
   for (const e of G.enemies) {
     drive(e, e.type, { aim: e.a, art: ART[e.T.art] || 'rifle', shootT: e.shotT, scale: e.T.scale, alpha: st === 'menu' ? 1 : e.va, flash: e.flash / 0.12, dead: e.dead, fallA: e.fallA });
+  }
+  const HO = G.H;
+  if (HO && st !== 'menu' && (HO.state === 'captive' || HO.state === 'follow' || HO.state === 'dead')) {
+    drive(HO, 'hostage', { aim: HO.a, art: 'none', shootT: 9, alpha: 1, flash: Math.max(0, HO.flash) / 0.12, scale: HO.state === 'captive' ? 0.9 : 1, dead: HO.state === 'dead', fallA: HO.a });
   }
   if (st !== 'menu') {
     const w = G.WEAPONS[P.wi];
