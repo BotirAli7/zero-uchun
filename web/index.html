@@ -46,6 +46,10 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
 .stats div{flex:1 1 96px;background:var(--panel);outline:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .stats b{font:700 26px var(--display);font-variant-numeric:tabular-nums}
 .stats span{font:600 10px var(--display);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.result{display:flex;gap:22px;align-items:center}
+.result-head{display:flex;flex-direction:column;gap:10px;min-width:0}
+.rank{font:700 clamp(72px,16vw,112px)/.85 var(--display);color:var(--accent);min-width:1ch;text-align:center}
+.rank.s{color:var(--friend)}.rank.none{color:var(--muted)}
 .note{font:500 13px/1.45 var(--body);color:var(--muted);margin:0}
 .fail{color:var(--danger)}.ok{color:var(--friend)}
 #touch{position:fixed;inset:0;pointer-events:none;z-index:5}
@@ -66,6 +70,8 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
     <button type="button" data-key="Tab">QUROL</button>
     <button type="button" data-key="Space">SAKRASH</button>
     <button type="button" data-key="KeyE">OLISH</button>
+    <button type="button" data-key="KeyC">CHO'KISH</button>
+    <button type="button" data-key="KeyF">PICHOQ</button>
   </div>
   <button type="button" id="pauseBtn" aria-label="Pauza">II</button>
 </div>
@@ -97,13 +103,15 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
       <span><kbd>RMB</kbd>Nishonga olish</span>
       <span><kbd>1 2 3</kbd>Qurollar</span>
       <span><kbd>R</kbd>Qayta o'qlash</span>
-      <span><kbd>G</kbd>Granata</span>
+      <span><kbd>G</kbd>Granata (bosib turing)</span>
+      <span><kbd>C</kbd>Cho'kish, jim yurish</span>
+      <span><kbd>F</kbd>Pichoq, orqadan jim</span>
       <span><kbd>E</kbd>Olish / ochish</span>
       <span><kbd>Q</kbd>Dori qutisi</span>
       <span><kbd>Space</kbd>Chetga sakrash</span>
       <span><kbd>Esc</kbd>Pauza</span>
     </div>
-    <p class="note" id="keysTouch" hidden>Chap barmoq bilan yuring. O'ng barmoqni torting: nishonga oladi, uzoqroq tortsangiz otadi. Tugmalar o'ng tomonda.</p>
+    <p class="note" id="keysTouch" hidden>Chap barmoq bilan yuring. O'ng barmoqni torting: nishonga oladi, uzoqroq tortsangiz otadi. Tugmalar o'ng tomonda: CHO'KISH bilan jim yuring, PICHOQ bilan dushmanni orqadan yo'q qiling.</p>
     <p class="note" id="best"></p>
   </div>
 </section>
@@ -119,8 +127,13 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
 
 <section class="screen" id="end" hidden>
   <div class="panel">
-    <div class="eyebrow" id="endEyebrow">Operatsiya natijasi</div>
-    <h2 id="endTitle">Evakuatsiya qilindi</h2>
+    <div class="result">
+      <div class="rank" id="endRank" aria-label="Reyting">A</div>
+      <div class="result-head">
+        <div class="eyebrow" id="endEyebrow">Operatsiya natijasi</div>
+        <h2 id="endTitle">Evakuatsiya qilindi</h2>
+      </div>
+    </div>
     <p class="lede" id="endText"></p>
     <div class="stats" id="endStats"></div>
     <button type="button" class="go" id="againBtn">Qayta boshlash</button>
@@ -732,8 +745,8 @@ function initAudio() {
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     // wind bed
     const wn = actx.createBufferSource(); wn.buffer = noiseBuf; wn.loop = true;
-    const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
-    const wg = actx.createGain(); wg.gain.value = 0.05;
+    const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const wg = actx.createGain(); wg.gain.value = 0.045;
     wn.connect(lp); lp.connect(wg); wg.connect(master); wn.start();
   } catch (e) { actx = null; }
 }
@@ -745,6 +758,8 @@ const SND = {
   pt: { f: 2100, q: 0.9, dur: 0.1, thump: 190, vol: 0.45 },
   sniper: { f: 900, q: 0.5, dur: 0.45, thump: 70, vol: 0.9 },
   boom: { f: 220, q: 0.4, dur: 1.2, thump: 45, vol: 1.2 },
+  step: { f: 420, q: 0.7, dur: 0.05, thump: 70, vol: 0.1 },
+  thunder: { f: 110, q: 0.3, dur: 2.6, thump: 32, vol: 0.9 },
 };
 function sound(type, vol = 1) {
   if (!actx || soundsThisFrame > 6 || vol < 0.02) return;
@@ -784,9 +799,9 @@ const ETYPES = {
   sniper: { name: 'Snayper', hp: 80, walk: 60, run: 120, vis: 1150, fov: 1.2, rate: 0.5, burst: [1, 1], pause: [2.4, 3.2], dmg: 48, spread: 0.012, range: 1300, pref: 0, turn: 1.6, react: 1.4, gun: 46, snd: 'sniper', static: true },
 };
 const DIFFS = {
-  easy: { dmg: 0.55, spread: 1.45, react: 1.0, detect: 0.7, label: 'Oson' },
-  normal: { dmg: 1, spread: 1, react: 0.62, detect: 1, label: "O'rta" },
-  hard: { dmg: 1.35, spread: 0.75, react: 0.42, detect: 1.3, label: 'Qiyin' },
+  easy: { dmg: 0.55, spread: 1.45, react: 1.0, detect: 0.7, gren: 0.25, score: 0.8, label: 'Oson' },
+  normal: { dmg: 1, spread: 1, react: 0.62, detect: 1, gren: 0.55, score: 1, label: "O'rta" },
+  hard: { dmg: 1.35, spread: 0.75, react: 0.42, detect: 1.3, gren: 0.85, score: 1.4, label: 'Qiyin' },
 };
 let diffKey = store.get('ko_diff') || 'normal';
 if (!DIFFS[diffKey]) diffKey = 'normal';
@@ -829,6 +844,8 @@ const LAMPS = [[1360, 890], [1300, 1030], [720, 940], [2000, 1030], [1700, 1150]
 let state = 'menu';
 let P, enemies, bullets, particles, casings, grenades, pickups, crates, objectives, floats, feed, lights, pings, dmgDirs;
 let cam = { x: 1400, y: 1000 }, shake = 0, gameTime = 0, banner = null, generatorOn = false;
+const RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const weather = { drops: [], flash: 0, nextFlash: 20, thunderT: -1 };
 let ext, stats, heliOut, hitMarker = 0, killMarker = 0, deathTimer = 0, pathBudget = 0;
 
 function newGame() {
@@ -838,14 +855,14 @@ function newGame() {
     x: LZ_IN.x + 20, y: LZ_IN.y - 30, a: -0.6, r: 13, hp: 100, armor: 60, stam: 100,
     wi: 0, mag: WEAPONS.map(w => w.mag), res: WEAPONS.map(w => w.reserve), reloadT: 0, switchT: 0, fireCd: 0, bloom: 0,
     gren: 3, med: 2, healT: 0, dodgeT: 0, dodgeCd: 0, dvx: 0, dvy: 0, iT: 0, walk: 0, moving: false, sprint: false,
-    interactT: 0, interactTarget: null, dead: false, hurt: 0, flash: 0, triggerHeld: false, staminaIdle: 0
+    interactT: 0, interactTarget: null, crouch: false, stepT: 0, knifeT: 0, knifeCd: 0, grenAim: false, takedownTarget: null, dead: false, hurt: 0, flash: 0, triggerHeld: false, staminaIdle: 0
   };
   enemies = ENEMY_SPAWNS.map(s => makeEnemy(s[0], s[1], s[2]));
   bullets = []; particles = []; casings = []; grenades = []; pickups = []; floats = []; feed = []; lights = []; pings = []; dmgDirs = [];
   crates = CRATE_POS.map(p => ({ x: p[0], y: p[1], opened: false }));
   objectives = OBJECTIVES_DEF.map(o => Object.assign({ taken: false }, o));
   ext = { active: false, hold: 0, need: 8, heliZ: 1 };
-  stats = { kills: 0, shots: 0, hits: 0, dmgTaken: 0, start: 0 };
+  stats = { kills: 0, shots: 0, hits: 0, dmgTaken: 0, takedowns: 0, start: 0 };
   gameTime = 0; shake = 0; generatorOn = false; deathTimer = 0;
   heliOut = { t: 0 };
   cam.x = P.x; cam.y = P.y;
@@ -859,7 +876,8 @@ function makeEnemy(type, route, baseA) {
     baseA: baseA != null ? baseA : 0, route, ri: route.length > 1 ? 1 : 0, wait: rand(0, 2), hp: Tt.hp, dead: false,
     state: 'patrol', sus: 0, lastKnown: { x: 0, y: 0 }, lostT: 0, target: null, alertT: 0, path: null, pi: 0, pathAge: 9, pathGoal: null,
     fireCd: 0, burst: 0, reactT: 0, strafe: 0, strafeT: 0, flash: 0, va: 0, walk: rand(0, 6), moving: false, shout: 0, charge: 0,
-    sees: false, shotT: 9, look: rand(0, TAU), directT: 0, direct: false
+    sees: false, shotT: 9, look: rand(0, TAU), directT: 0, direct: false,
+    gren: (type === 'rifle' || type === 'gunner') && Math.random() < DIFF.gren ? 1 : 0
   };
 }
 
@@ -990,7 +1008,7 @@ function playerFire() {
   const m = muzzle(P.x, P.y, P.a, w.gun);
   const moving = P.moving ? 0.035 : 0;
   const ads = mouse.r && !IS_TOUCH ? 0.55 : 1;
-  const sp = (w.spread + P.bloom + moving) * ads;
+  const sp = (w.spread + P.bloom + moving) * ads * (P.crouch ? 0.8 : 1);
   for (let i = 0; i < w.pellets; i++) {
     const a = P.a + gauss() * sp;
     bullets.push({ x: m.x, y: m.y, px: m.x, py: m.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dmg: w.dmg, own: 'p', trav: 0, range: w.range, max: w.range * 1.35, hitCount: 0 });
@@ -1006,20 +1024,49 @@ function playerFire() {
   makeNoise(P.x, P.y, w.noise);
   pings.push({ x: P.x, y: P.y, t: 0.5, own: true });
 }
-function throwGrenade() {
-  if (P.gren <= 0 || P.dead) return;
-  P.gren--;
+const GREN_R = 165;
+function insideTall(x, y, pad) {
+  for (const o of sightObs) if (x > o.x - pad && x < o.x + o.w + pad && y > o.y - pad && y < o.y + o.h + pad) return true;
+  return false;
+}
+function grenadeTarget() {
   let tx, ty;
   if (IS_TOUCH || touchUsed && !mouse.seen) { tx = P.x + Math.cos(P.a) * 340; ty = P.y + Math.sin(P.a) * 340; }
   else { tx = cam.x + (mouse.x - W / 2) / ZOOM; ty = cam.y + (mouse.y - H / 2) / ZOOM; }
   const d = dist(P.x, P.y, tx, ty);
   if (d > 460) { tx = P.x + (tx - P.x) / d * 460; ty = P.y + (ty - P.y) / d * 460; }
-  const dd = Math.max(40, dist(P.x, P.y, tx, ty));
-  grenades.push({ x: P.x, y: P.y, sx: P.x, sy: P.y, tx, ty, t: 0, dur: 0.3 + dd / 560, fuse: 1.8, z: 0, rot: 0, landed: false });
+  return { tx, ty };
+}
+// where a grenade thrown from (sx,sy) at (tx,ty) actually comes to rest (stops at walls)
+function grenadeLanding(sx, sy, tx, ty) {
+  let lx = sx, ly = sy;
+  for (let i = 1; i <= 24; i++) {
+    const x = lerp(sx, tx, i / 24), y = lerp(sy, ty, i / 24);
+    if (insideTall(x, y, 4)) break;
+    lx = x; ly = y;
+  }
+  return { x: lx, y: ly };
+}
+function spawnGrenade(sx, sy, tx, ty, own, fuse) {
+  const dd = Math.max(40, dist(sx, sy, tx, ty));
+  grenades.push({ x: sx, y: sy, sx, sy, tx, ty, t: 0, dur: 0.3 + dd / 560, fuse, z: 0, rot: 0, landed: false, landedT: 0, own });
+}
+function throwGrenade() {
+  if (P.gren <= 0 || P.dead) return;
+  P.gren--;
+  const { tx, ty } = grenadeTarget();
+  spawnGrenade(P.x, P.y, tx, ty, 'p', 1.8);
   blip(180, 0.08, 0.08, 'triangle');
 }
+function enemyGrenade(e) {
+  e.gren--;
+  const tx = e.lastKnown.x + rand(-40, 40), ty = e.lastKnown.y + rand(-40, 40);
+  spawnGrenade(e.x, e.y, tx, ty, 'e', 2.2);
+  if (e.va > 0.3) addFloat(e.x, e.y - 30, 'GRANATA!', '#e5484d');
+  addFeed(`${e.T.name} granata otdi`, '#e5484d');
+}
 function explode(g) {
-  const R = 165;
+  const R = GREN_R;
   sound('boom', clamp(distVol(g.x, g.y) + 0.2, 0, 1.2));
   shake = Math.max(shake, clamp(26 - dist(g.x, g.y, P.x, P.y) / 40, 4, 26));
   addLight(g.x, g.y, 420, '255,160,60', 0.85, 0.35);
@@ -1075,7 +1122,9 @@ function updatePlayer(dt) {
   const rs = stickVec(sticks.R);
   const wantFire = mouse.l || rs.px > 52;
   const ads = mouse.r && !IS_TOUCH;
+  if (pressed.has('KeyC') || pressed.has('ControlLeft')) { P.crouch = !P.crouch; blip(P.crouch ? 300 : 360, 0.04, 0.04, 'sine'); }
   P.sprint = (keys.has('ShiftLeft') || keys.has('ShiftRight') || ls.m > 0.97) && mag > 0 && P.stam > 1 && !wantFire && !ads && P.healT <= 0;
+  if (P.sprint) P.crouch = false;
   P.a = aimAngle();
 
   // dodge
@@ -1089,7 +1138,7 @@ function updatePlayer(dt) {
   let vx, vy;
   if (P.dodgeT > 0) { P.dodgeT -= dt; vx = P.dvx * 470; vy = P.dvy * 470; }
   else {
-    let speed = P.sprint ? 262 : 168;
+    let speed = P.sprint ? 262 : P.crouch ? 98 : 168;
     if (ads) speed = 112;
     if (P.healT > 0) speed = 95;
     vx = ix * speed * mag; vy = iy * speed * mag;
@@ -1098,6 +1147,14 @@ function updatePlayer(dt) {
   if (P.moving) P.walk += dt * (P.sprint ? 15 : 10);
   moveEnt(P, vx, vy, dt, P.r);
   P.x = clamp(P.x, 20, MW - 20); P.y = clamp(P.y, 20, MH - 20);
+  // footsteps: walking is audible up close, sprinting carries far, crouching is silent
+  if (P.moving && P.dodgeT <= 0) {
+    P.stepT -= dt;
+    if (P.stepT <= 0) {
+      P.stepT = P.sprint ? 0.29 : P.crouch ? 0.6 : 0.42;
+      if (!P.crouch) { sound('step', P.sprint ? 1 : 0.55); makeNoise(P.x, P.y, P.sprint ? 270 : 110); }
+    }
+  }
 
   // stamina
   if (P.sprint) { P.stam = Math.max(0, P.stam - 20 * dt); P.staminaIdle = 0; }
@@ -1120,7 +1177,7 @@ function updatePlayer(dt) {
   }
   if (pressed.has('KeyR')) startReload();
   const triggerEdge = pressed.has('Mouse0') || (rs.px > 52 && !P.triggerHeld);
-  const canFire = P.reloadT <= 0 && P.switchT <= 0 && P.fireCd <= 0 && P.healT <= 0 && P.dodgeT <= 0 && !P.sprint;
+  const canFire = !P.grenAim && P.knifeT <= 0 && P.reloadT <= 0 && P.switchT <= 0 && P.fireCd <= 0 && P.healT <= 0 && P.dodgeT <= 0 && !P.sprint;
   if (wantFire && canFire) {
     if (P.mag[P.wi] > 0) {
       if (w.auto || triggerEdge || rs.px > 52) playerFire();
@@ -1130,7 +1187,36 @@ function updatePlayer(dt) {
   if (P.mag[P.wi] === 0 && P.reloadT <= 0 && P.res[P.wi] > 0 && !wantFire) startReload();
 
   // grenade / heal
-  if (pressed.has('KeyG')) throwGrenade();
+  if (IS_TOUCH || (touchUsed && !mouse.seen)) { if (pressed.has('KeyG')) throwGrenade(); P.grenAim = false; }
+  else if (keys.has('KeyG') && P.gren > 0 && !P.dead) P.grenAim = true;
+  else if (P.grenAim) { P.grenAim = false; throwGrenade(); }
+
+  // knife: silent takedown on an unaware enemy or from behind, otherwise a melee strike
+  P.knifeCd -= dt; P.knifeT -= dt;
+  let td = null, tdBest = 54;
+  for (const e of enemies) {
+    if (e.dead) continue;
+    const d = dist(P.x, P.y, e.x, e.y);
+    if (d > tdBest) continue;
+    const behind = Math.abs(angDiff(e.a, Math.atan2(P.y - e.y, P.x - e.x))) > 1.9;
+    if (e.state !== 'combat' || behind) { tdBest = d; td = e; }
+  }
+  P.takedownTarget = td;
+  if (pressed.has('KeyF') && P.knifeCd <= 0) {
+    P.knifeCd = 0.55; P.knifeT = 0.22; P.reloadT = 0;
+    if (td) {
+      stats.takedowns++;
+      addFloat(td.x, td.y - 28, "JIM YO'Q QILINDI", '#5ccfbf');
+      killEnemy(td, Math.atan2(td.y - P.y, td.x - P.x), true);
+    } else {
+      for (const e of enemies) {
+        if (e.dead) continue;
+        const a = Math.atan2(e.y - P.y, e.x - P.x);
+        if (dist(P.x, P.y, e.x, e.y) < 48 && Math.abs(angDiff(P.a, a)) < 1.0) { damageEnemy(e, 55, a, false); hitMarker = 0.18; break; }
+      }
+    }
+    blip(1400, 0.05, 0.04, 'sawtooth');
+  }
   if (pressed.has('KeyQ') && P.med > 0 && P.healT <= 0 && P.hp < 100) { P.med--; P.healT = 3; P.reloadT = 0; blip(660, 0.1, 0.06, 'sine'); }
   if (P.healT > 0) { P.healT -= dt; P.hp = Math.min(100, P.hp + 50 / 3 * dt); if (P.healT <= 0) addFloat(P.x, P.y - 26, '+50 SOG\'LIK', '#7ad89a'); }
 
@@ -1222,13 +1308,13 @@ function damageEnemy(e, d, fromA, explosive) {
   if (e.hp <= 0) { killEnemy(e, fromA); return; }
   if (e.state !== 'combat') { e.lastKnown = { x: P.x, y: P.y }; enterCombat(e); e.a = Math.atan2(P.y - e.y, P.x - e.x); }
 }
-function killEnemy(e, fromA) {
+function killEnemy(e, fromA, silent) {
   e.dead = true; stats.kills++; killMarker = 0.45;
   const px = e.x + Math.cos(fromA) * 6, py = e.y + Math.sin(fromA) * 6;
   bakeBloodPool(px, py, e.type === 'gunner' ? 34 : 28);
   bake(c => drawSoldier(c, px, py, fromA + Math.PI + rand(-0.4, 0.4), Object.assign({}, STYLE[e.type], { cloth: shade(STYLE[e.type].cloth), vest: shade(STYLE[e.type].vest) }), { gun: e.T.gun, scale: e.T.scale, dead: true }));
   bake(c => { c.save(); c.translate(e.x + rand(-20, 20), e.y + rand(-20, 20)); c.rotate(rand(0, TAU)); c.fillStyle = '#121416'; c.fillRect(-e.T.gun / 2, -2, e.T.gun, 4.2); c.restore(); });
-  addFeed(`${e.T.name} yo'q qilindi`, '#e8e4d6');
+  addFeed(silent ? `${e.T.name} jimgina yo'q qilindi` : `${e.T.name} yo'q qilindi`, silent ? '#5ccfbf' : '#e8e4d6');
   const r = Math.random();
   if (r < 0.55) pickups.push({ x: e.x + rand(-14, 14), y: e.y + rand(-14, 14), kind: 'ammo' });
   else if (r < 0.7) pickups.push({ x: e.x + rand(-14, 14), y: e.y + rand(-14, 14), kind: 'med' });
@@ -1284,7 +1370,7 @@ function updateEnemy(e, dt) {
   const Tt = e.T;
   const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy), toP = Math.atan2(dy, dx);
   let sees = false;
-  if (!P.dead && d < Tt.vis) {
+  if (!P.dead && d < Tt.vis * (P.crouch ? 0.72 : 1)) {
     const cone = e.state === 'combat' ? Math.PI : Tt.fov / 2;
     if ((Math.abs(angDiff(e.a, toP)) < cone || d < 90) && !losBlocked(e.x, e.y, P.x, P.y)) sees = true;
   }
@@ -1293,7 +1379,7 @@ function updateEnemy(e, dt) {
   if (sees) {
     e.lastKnown = { x: P.x, y: P.y }; e.lostT = 0;
     if (e.state !== 'combat') {
-      const rate = Math.max(0.4, (1.15 - d / Tt.vis) * 2.4) * DIFF.detect * (P.sprint ? 1.4 : 1) * (P.moving ? 1 : 0.75);
+      const rate = Math.max(0.4, (1.15 - d / Tt.vis) * 2.4) * DIFF.detect * (P.sprint ? 1.4 : 1) * (P.moving ? 1 : 0.75) * (P.crouch ? 0.5 : 1);
       e.sus += dt * rate;
       e.a = turnTo(e.a, toP, 2.2 * dt);
       if (e.sus >= 1) enterCombat(e);
@@ -1301,6 +1387,17 @@ function updateEnemy(e, dt) {
     }
   } else if (e.state !== 'combat') e.sus = Math.max(0, e.sus - dt * 0.12);
 
+  // aware enemies scatter from a live grenade
+  if (e.state !== 'patrol') {
+    for (const g of grenades) {
+      if (!g.landed || g.landedT < 0.3) continue;
+      if (dist(e.x, e.y, g.x, g.y) > GREN_R + 25) continue;
+      const a = Math.atan2(e.y - g.y, e.x - g.x), ox = e.x, oy = e.y;
+      moveEnt(e, Math.cos(a) * Tt.run, Math.sin(a) * Tt.run, dt, 13);
+      e.moving = dist(ox, oy, e.x, e.y) > 0.3; e.walk += dt * 10; e.a = turnTo(e.a, a, 8 * dt);
+      return;
+    }
+  }
   if (e.state === 'patrol') {
     if (e.route.length > 1) {
       if (e.wait > 0) { e.wait -= dt; e.look += dt * 0.8; e.a = turnTo(e.a, e.a + Math.sin(e.look) * 0.6, 0.8 * dt); }
@@ -1353,6 +1450,11 @@ function updateEnemy(e, dt) {
       }
     } else {
       e.lostT += dt; e.charge = 0;
+      // flush the player out of cover with a grenade
+      if (e.gren > 0 && e.lostT > 1.2 && e.lostT < 6 && dist(P.x, P.y, e.lastKnown.x, e.lastKnown.y) < 150) {
+        const gd = dist(e.x, e.y, e.lastKnown.x, e.lastKnown.y);
+        if (gd > 170 && gd < 470 && !losBlocked(e.x, e.y, e.lastKnown.x, e.lastKnown.y) && Math.random() < dt * 0.5) enemyGrenade(e);
+      }
       e.reactT = Math.max(e.reactT, 0.3 * DIFF.react / 0.62);
       if (!Tt.static) {
         const left = moveEnemyTo(e, e.lastKnown.x, e.lastKnown.y, Tt.run, dt, true);
@@ -1456,18 +1558,37 @@ function updateGrenades(dt) {
       g.t += dt;
       const k = Math.min(1, g.t / g.dur);
       const nx = lerp(g.sx, g.tx, k), ny = lerp(g.sy, g.ty, k);
-      if (insideSolid(nx, ny, 4) && !insideSolid(g.x, g.y, 4)) {
+      if (insideTall(nx, ny, 4) && !insideTall(g.x, g.y, 4)) {
         g.landed = true; dust(g.x, g.y, 2); blip(240, 0.04, 0.06, 'triangle');
       } else { g.x = nx; g.y = ny; }
       g.z = Math.sin(Math.PI * k) * (18 + g.dur * 30);
       if (k >= 1) { g.landed = true; g.z = 0; dust(g.x, g.y, 2); blip(240, 0.04, 0.06, 'triangle'); }
     }
+    if (g.landed) g.landedT += dt;
     if (g.fuse <= 0) { g.done = true; explode(g); }
   }
   grenades = grenades.filter(g => !g.done);
 }
 
 // ───────────────────────── main update ─────────────────────────
+function updateWeather(dt) {
+  const want = RM ? 50 : 170;
+  while (weather.drops.length < want) weather.drops.push({ x: Math.random(), y: Math.random(), s: rand(0.7, 1.2) });
+  for (const d of weather.drops) {
+    d.y += dt * 1.3 * d.s; d.x += dt * 0.25 * d.s;
+    if (d.y > 1.05) { d.y -= 1.1; d.x = Math.random(); }
+    if (d.x > 1.05) d.x -= 1.1;
+  }
+  if (P && state === 'play' && Math.random() < dt * 22) {
+    const vw = W / ZOOM, vh = H / ZOOM;
+    addP({ t: 'splash', x: cam.x + rand(-vw / 2, vw / 2), y: cam.y + rand(-vh / 2, vh / 2), life: 0.35, max: 0.35, size: rand(3, 6) });
+  }
+  if (RM) return;
+  weather.nextFlash -= dt;
+  if (weather.nextFlash <= 0) { weather.flash = 1; weather.nextFlash = rand(22, 45); weather.thunderT = rand(0.6, 1.6); }
+  if (weather.flash > 0) weather.flash = Math.max(0, weather.flash - dt * 2.2);
+  if (weather.thunderT > 0) { weather.thunderT -= dt; if (weather.thunderT <= 0) sound('thunder', 0.8); }
+}
 function update(dt) {
   gameTime += dt;
   pathBudget = 3;
@@ -1515,7 +1636,8 @@ function render(dt) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#0a0d0c'; ctx.fillRect(0, 0, cv.width, cv.height);
   if (!P) return;
-  const sx = shake ? rand(-shake, shake) * 0.6 : 0, sy = shake ? rand(-shake, shake) * 0.6 : 0;
+  const sk = RM ? 0.15 : 0.6;
+  const sx = shake ? rand(-shake, shake) * sk : 0, sy = shake ? rand(-shake, shake) * sk : 0;
   ctx.setTransform(DPR * ZOOM, 0, 0, DPR * ZOOM, DPR * (W / 2 + sx) - cam.x * DPR * ZOOM, DPR * (H / 2 + sy) - cam.y * DPR * ZOOM);
   const vw = W / ZOOM, vh = H / ZOOM, vx = cam.x - vw / 2, vy = cam.y - vh / 2;
   const inView = (x, y, m) => x > vx - m && x < vx + vw + m && y > vy - m && y < vy + vh + m;
@@ -1583,7 +1705,14 @@ function render(dt) {
   }
   // player
   if (P.dead) drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { gun: WEAPONS[P.wi].gun, dead: true });
-  else if (state !== 'menu') drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { gun: WEAPONS[P.wi].gun, walk: P.walk, moving: P.moving, flash: P.iT > 0 ? 0.6 : 0 });
+  else if (state !== 'menu') {
+    drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { gun: WEAPONS[P.wi].gun, walk: P.walk, moving: P.moving, flash: P.iT > 0 ? 0.6 : 0, scale: P.crouch ? 0.9 : 1 });
+    if (P.knifeT > 0) {
+      const k = 1 - P.knifeT / 0.22;
+      ctx.strokeStyle = `rgba(230,240,245,${0.8 * (1 - k)})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(P.x, P.y, 34, P.a - 0.9 + k * 0.6, P.a + 0.3 + k * 0.6); ctx.stroke();
+    }
+  }
   // grenades
   for (const g of grenades) {
     ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(g.x + 2, g.y + 3, 5, 4, 0, 0, TAU); ctx.fill();
@@ -1595,6 +1724,7 @@ function render(dt) {
     const k = p.life / p.max;
     if (p.t === 'smoke') { ctx.fillStyle = `rgba(${p.col},${p.a * k})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
     else if (p.t === 'blood') { ctx.fillStyle = `rgba(120,12,12,${0.9 * k + 0.1})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
+    else if (p.t === 'splash') { ctx.strokeStyle = `rgba(190,210,220,${0.35 * k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.6 - k), 0, TAU); ctx.stroke(); }
   }
   // canopies
   for (const tr of trees) {
@@ -1615,10 +1745,11 @@ function render(dt) {
     ctx.moveTo(vis[0], vis[1]);
     for (let i = 2; i < vis.length; i += 2) ctx.lineTo(vis[i], vis[i + 1]);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(4,7,8,.8)';
+    const fa = (0.8 * (1 - weather.flash * 0.6)).toFixed(3);
+    ctx.fillStyle = `rgba(4,7,8,${fa})`;
     ctx.fill('evenodd');
     const g = ctx.createRadialGradient(P.x, P.y, VIS_R * 0.5, P.x, P.y, VIS_R);
-    g.addColorStop(0, 'rgba(4,7,8,0)'); g.addColorStop(1, 'rgba(4,7,8,.8)');
+    g.addColorStop(0, 'rgba(4,7,8,0)'); g.addColorStop(1, `rgba(4,7,8,${fa})`);
     ctx.beginPath(); ctx.moveTo(vis[0], vis[1]);
     for (let i = 2; i < vis.length; i += 2) ctx.lineTo(vis[i], vis[i + 1]);
     ctx.closePath(); ctx.fillStyle = g; ctx.fill();
@@ -1626,6 +1757,14 @@ function render(dt) {
   } else {
     ctx.fillStyle = 'rgba(4,7,8,.25)'; ctx.fillRect(vx, vy, vw, vh);
   }
+
+  // enemy flashlights (visible through the dark: shows where they are looking, not who they are)
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const e of enemies) {
+    if (e.dead || e.type === 'sniper' || !inView(e.x, e.y, 320)) continue;
+    drawFlashlight(e);
+  }
+  ctx.restore();
 
   // tall solids above fog
   for (const o of tallObs) {
@@ -1705,6 +1844,30 @@ function render(dt) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (state !== 'menu') drawHUD(t);
 }
+function drawFlashlight(e) {
+  const m = muzzle(e.x, e.y, e.a, e.T.gun, e.T.scale || 1);
+  const half = 0.36, len = 290, n = 12;
+  const pts = [m.x, m.y];
+  const bx0 = m.x - len, bx1 = m.x + len, by0 = m.y - len, by1 = m.y + len;
+  for (let i = 0; i < n; i++) {
+    const a = e.a - half + i * (2 * half / (n - 1));
+    const ex = m.x + Math.cos(a) * len, ey = m.y + Math.sin(a) * len;
+    let best = 1;
+    for (const o of sightObs) {
+      if (o.x > bx1 || o.x + o.w < bx0 || o.y > by1 || o.y + o.h < by0) continue;
+      const t = segRect(m.x, m.y, ex, ey, o);
+      if (t > 0 && t < best) best = t;
+    }
+    pts.push(m.x + (ex - m.x) * best, m.y + (ey - m.y) * best);
+  }
+  const col = e.state === 'combat' ? '229,72,77' : e.state === 'alert' ? '242,201,76' : '255,235,190';
+  const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, len);
+  g.addColorStop(0, `rgba(${col},${e.state === 'patrol' ? 0.1 : 0.14})`); g.addColorStop(0.7, `rgba(${col},${e.state === 'patrol' ? 0.04 : 0.06})`); g.addColorStop(1, `rgba(${col},0)`);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+  ctx.closePath(); ctx.fill();
+}
 function drawHeli(x, y, a, sc, t) {
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x + 40 * sc, y + 60 * sc, 60 * sc, 26 * sc, a, 0, TAU); ctx.fill();
@@ -1736,6 +1899,35 @@ function drawWorldMarkers(t, inView) {
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(e.x - 16, e.y + 22, 32, 4);
       ctx.fillStyle = '#e5484d'; ctx.fillRect(e.x - 16, e.y + 22, 32 * e.hp / e.T.hp, 4);
     }
+  }
+  // live grenade danger zones
+  for (const g of grenades) {
+    const k = clamp(1 - g.fuse / 2.2, 0, 1);
+    ctx.strokeStyle = g.own === 'e' ? `rgba(229,72,77,${0.35 + k * 0.5})` : `rgba(240,162,59,${0.25 + k * 0.4})`;
+    ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.arc(g.x, g.y, GREN_R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    if (g.own === 'e') { ctx.fillStyle = '#e5484d'; ctx.font = "700 12px 'Chakra Petch', sans-serif"; ctx.fillText('GRANATA', g.x, g.y - 18); }
+  }
+  // grenade aim preview
+  if (P.grenAim && !P.dead) {
+    const { tx, ty } = grenadeTarget();
+    const L = grenadeLanding(P.x, P.y, tx, ty);
+    const mx = (P.x + L.x) / 2, my = (P.y + L.y) / 2 - dist(P.x, P.y, L.x, L.y) * 0.25;
+    ctx.strokeStyle = 'rgba(240,162,59,.85)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.quadraticCurveTo(mx, my, L.x, L.y); ctx.stroke();
+    ctx.beginPath(); ctx.arc(L.x, L.y, GREN_R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(240,162,59,.12)'; ctx.beginPath(); ctx.arc(L.x, L.y, GREN_R, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#f0a23b'; ctx.beginPath(); ctx.arc(L.x, L.y, 4, 0, TAU); ctx.fill();
+  }
+  // takedown prompt
+  const tdT = P.takedownTarget;
+  if (tdT && !P.dead && !tdT.dead && tdT.va > 0.3) {
+    const label = (IS_TOUCH || touchUsed) ? "PICHOQ · jim yo'q qilish" : "F · jim yo'q qilish";
+    ctx.font = "700 13px 'Chakra Petch', sans-serif";
+    const tw = ctx.measureText(label).width + 18;
+    ctx.fillStyle = 'rgba(8,11,10,.85)'; ctx.fillRect(tdT.x - tw / 2, tdT.y - 62, tw, 24);
+    ctx.fillStyle = '#5ccfbf'; ctx.fillRect(tdT.x - tw / 2, tdT.y - 62, 3, 24);
+    ctx.fillStyle = '#e8e4d6'; ctx.fillText(label, tdT.x, tdT.y - 49);
   }
   // interaction prompt
   const it = P.interactTarget;
@@ -1838,9 +2030,38 @@ function drawMinimap(x, y, w, h, t) {
   hudText('N', x + w / 2, y + 12, 10, 'rgba(232,228,214,.6)', 'center');
 }
 function fmtTime(s) { const m = Math.floor(s / 60), r = Math.floor(s % 60); return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`; }
+function drawRain() {
+  ctx.strokeStyle = 'rgba(185,205,215,.22)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const d of weather.drops) {
+    const x = d.x * W, y = d.y * H, l = 16 * d.s;
+    ctx.moveTo(x, y); ctx.lineTo(x - l * 0.25, y - l);
+  }
+  ctx.stroke();
+  if (weather.flash > 0) {
+    const f = weather.flash * (weather.flash > 0.6 ? 1 : (Math.sin(weather.flash * 40) > 0 ? 0.6 : 0.2));
+    ctx.fillStyle = `rgba(200,220,255,${f * 0.16})`; ctx.fillRect(0, 0, W, H);
+  }
+}
+const TIPS_DESK = ["C: cho'king. Qadam tovushi chiqmaydi, dushman sizni kechroq sezadi.", "F: dushmanga orqadan yaqinlashib, jimgina yo'q qiling.", "G ni bosib turing: granata qayerga tushishini ko'rasiz.", "Fonar nurlari dushman qayerga qarayotganini ko'rsatadi."];
+const TIPS_TOUCH = ["CHO'KISH: qadam tovushi chiqmaydi, dushman kechroq sezadi.", "PICHOQ: dushmanga orqadan yaqinlashib, jimgina yo'q qiling.", "Fonar nurlari dushman qayerga qarayotganini ko'rsatadi."];
 function drawHUD(t) {
   const touch = IS_TOUCH || touchUsed;
   const pad = 16;
+  drawRain();
+  // opening tips
+  if (gameTime > 4.5 && gameTime < 4.5 + 7 * (touch ? TIPS_TOUCH : TIPS_DESK).length) {
+    const tips = touch ? TIPS_TOUCH : TIPS_DESK;
+    const i = Math.floor((gameTime - 4.5) / 7), local = (gameTime - 4.5) % 7;
+    const a = clamp(Math.min(local, 7 - local) * 2, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.font = "500 14px 'Barlow', sans-serif";
+    const tw = Math.min(W - 32, ctx.measureText(tips[i]).width + 28), ty = touch ? H * 0.42 : H - 112;
+    ctx.fillStyle = 'rgba(8,11,10,.8)'; ctx.fillRect(W / 2 - tw / 2, ty - 20, tw, 32);
+    ctx.fillStyle = '#5ccfbf'; ctx.fillRect(W / 2 - tw / 2, ty - 20, 3, 32);
+    hudText(tips[i], W / 2, ty + 1, W < 420 ? 12 : 14, '#e8e4d6', 'center', 500, 'Barlow');
+    ctx.globalAlpha = 1;
+  }
   // damage vignette / low hp
   const low = P.hp < 35 ? (0.25 + Math.sin(t * 5) * 0.1) * (1 - P.hp / 35) : 0;
   const vig = Math.max(P.hurt * 0.55, low);
@@ -1867,6 +2088,8 @@ function drawHUD(t) {
   hudText(String(Math.ceil(P.armor)), vx + bw, vy + 38, 13, '#8fb7ff', 'right', 700);
   bar(vx, vy + 42, bw, 5, P.armor / 60, '#8fb7ff');
   bar(vx, vy + 53, bw, 3, P.stam / 100, '#f0a23b');
+  const stance = P.crouch ? "CHO'KKAN" : P.sprint ? 'YUGURISH' : '';
+  if (stance) hudText(stance, vx + 64, vy + 9, 10, P.crouch ? '#5ccfbf' : '#f0a23b');
 
   // ── minimap
   const narrow = W < 600;
@@ -2037,21 +2260,34 @@ function endGame(win) {
   $('endText').textContent = win
     ? 'Uchala yuk HAVENga yetkazildi. Vertolyot maydonchadan ko\'tarildi.'
     : (objs ? `Siz ${objs} ta yukni olgan edingiz, lekin evakuatsiyaga yeta olmadingiz.` : 'Siz yiqildingiz. Ehtiyotroq harakat qiling: shovqin dushmanlarni chaqiradi.');
+  let score = objs * 800 + stats.kills * 100 + stats.takedowns * 150 + acc * 10 - Math.round(stats.dmgTaken) * 2;
+  if (win) score += 1500 + Math.max(0, 600 - gameTime) * 4;
+  score = Math.max(0, Math.round(score * DIFF.score));
+  const rank = !win ? '—' : score >= 7000 ? 'S' : score >= 5200 ? 'A' : score >= 3800 ? 'B' : 'C';
+  $('endRank').textContent = rank;
+  $('endRank').className = 'rank' + (rank === 'S' ? ' s' : '');
+  $('endRank').hidden = !win;
   $('endStats').innerHTML = [
-    [fmtTime(gameTime), 'Vaqt'], [stats.kills, "Yo'q qilindi"], [acc + '%', 'Aniqlik'], [`${objs}/3`, 'Yuklar'], [Math.round(stats.dmgTaken), 'Olingan zarar']
+    [score, 'Ball'], [fmtTime(gameTime), 'Vaqt'], [stats.kills, "Yo'q qilindi"], [stats.takedowns, 'Jimgina'], [acc + '%', 'Aniqlik'], [`${objs}/3`, 'Yuklar'], [Math.round(stats.dmgTaken), 'Olingan zarar']
   ].map(s => `<div><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
   let bestTxt = '';
   if (win) {
     const key = 'ko_best_' + diffKey, prev = parseFloat(store.get(key));
-    if (!prev || gameTime < prev) { store.set(key, String(gameTime)); bestTxt = `Yangi rekord (${DIFF.label}): ${fmtTime(gameTime)}`; }
+    if (!prev || gameTime < prev) { store.set(key, String(gameTime)); bestTxt = `Yangi rekord vaqt (${DIFF.label}): ${fmtTime(gameTime)}`; }
     else bestTxt = `Eng yaxshi vaqt (${DIFF.label}): ${fmtTime(prev)}`;
+    const skey = 'ko_score_' + diffKey, sprev = parseFloat(store.get(skey)) || 0;
+    if (score > sprev) { store.set(skey, String(score)); bestTxt += ` · Yangi rekord ball: ${score}`; }
+    else bestTxt += ` · Eng yuqori ball: ${sprev}`;
   }
   $('endBest').textContent = bestTxt;
   setTimeout(() => $('againBtn').focus(), 50);
 }
 function refreshBest() {
-  const parts = Object.keys(DIFFS).map(k => { const v = parseFloat(store.get('ko_best_' + k)); return v ? `${DIFFS[k].label} ${fmtTime(v)}` : null; }).filter(Boolean);
-  $('best').textContent = parts.length ? 'Eng yaxshi vaqtlar: ' + parts.join(' · ') : '';
+  const parts = Object.keys(DIFFS).map(k => {
+    const v = parseFloat(store.get('ko_best_' + k)), sc = parseFloat(store.get('ko_score_' + k));
+    return v ? `${DIFFS[k].label} ${fmtTime(v)}${sc ? ' / ' + sc + ' ball' : ''}` : null;
+  }).filter(Boolean);
+  $('best').textContent = parts.length ? 'Rekordlar: ' + parts.join(' · ') : '';
 }
 document.querySelectorAll('[data-diff]').forEach(b => {
   b.setAttribute('aria-pressed', String(b.dataset.diff === diffKey));
@@ -2076,6 +2312,7 @@ let last = performance.now(), menuT = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.033, (now - last) / 1000); last = now;
+  if (state !== 'pause') updateWeather(dt);
   if (state === 'play') update(dt);
   else if (state === 'menu') {
     menuT += dt * 0.05;

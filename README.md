@@ -16,6 +16,12 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
 - Evakuatsiya paytida dushman kuchaytirmasi keladi, vertolyot qo'nadi
 - 3 qiyinlik darajasi, eng yaxshi vaqt brauzerda saqlanadi
 - Ovozlar WebAudio orqali generatsiya qilinadi (tashqi fayl yo'q)
+- Yashirin harakat: cho'kish (qadam tovushi yo'q, dushman kechroq sezadi) va
+  orqadan pichoq bilan jimgina yo'q qilish
+- Dushmanlarning fonar nurlari qorong'ida qayerga qarayotganini ko'rsatadi
+- Dushmanlar sizni panadan chiqarish uchun granata otadi va granatadan qochadi
+- Granatani bosib turganda traektoriya va portlash radiusi ko'rinadi
+- Yomg'ir va chaqmoq; oxirida ball va S/A/B/C reyting
 
 | Tugma | Amal |
 |---|---|
@@ -24,7 +30,9 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
 | Sichqoncha chap / o'ng | Otish / nishonga olish (uzoqroq ko'rish) |
 | `1 2 3`, g'ildirak | Qurol tanlash |
 | `R` | Qayta o'qlash |
-| `G` | Granata (kursor tomonga) |
+| `G` (bosib turish) | Granata: mo'ljal ko'rinadi, qo'yib yuborganda otiladi |
+| `C` | Cho'kish / turish |
+| `F` | Pichoq, orqadan jimgina yo'q qilish |
 | `E` (bosib turish) | Yukni olish, qutini ochish |
 | `Q` | Dori qutisi |
 | `Space` | Chetga sakrash |
