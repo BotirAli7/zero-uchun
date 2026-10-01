@@ -113,6 +113,7 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
     </div>
     <p class="note" id="keysTouch" hidden>Chap barmoq bilan yuring. O'ng barmoqni torting: nishonga oladi, uzoqroq tortsangiz otadi. Tugmalar o'ng tomonda: CHO'KISH bilan jim yuring, PICHOQ bilan dushmanni orqadan yo'q qiling.</p>
     <p class="note" id="best"></p>
+    <p class="note">Personaj grafikasi: rileygombart, "Animated Top Down Survivor Player" (CC-BY 3.0, OpenGameArt).</p>
   </div>
 </section>
 
@@ -628,6 +629,7 @@ function paintGround() {
 }
 function drawCrate(c, o, R) {
   c.fillStyle = '#6b5233'; c.fillRect(o.x, o.y, o.w, o.h);
+  c.strokeStyle = '#000'; c.lineWidth = 2; c.strokeRect(o.x, o.y, o.w, o.h);
   c.fillStyle = 'rgba(255,220,160,.08)'; c.fillRect(o.x, o.y, o.w, 3);
   c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 1;
   for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(o.x, o.y + k * o.h / 4); c.lineTo(o.x + o.w, o.y + k * o.h / 4); c.stroke(); }
@@ -694,7 +696,7 @@ function drawSandbags(c, o, R) {
       const cy = horiz ? o.y + th / 2 + (row ? -3 : 3) : o.y + k + 14;
       c.fillStyle = row ? '#867a59' : '#766b4d';
       c.beginPath(); c.ellipse(cx, cy, horiz ? 15 : th / 2 + 1, horiz ? th / 2 + 1 : 15, 0, 0, TAU); c.fill();
-      c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1; c.stroke();
+      c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 1.4; c.stroke();
     }
   }
 }
@@ -839,6 +841,58 @@ function drawSoldier(c, x, y, a, st, o) {
   c.restore();
 }
 
+// ───────────────────────── hand-drawn sprite atlases ─────────────────────────
+// Character art: "Animated Top Down Survivor Player" by rileygombart, CC-BY 3.0
+// (opengameart.org/content/animated-top-down-survivor-player). Atlases are built
+// by tools/build_sprites.py; until they load, the procedural soldier is used.
+const SPR = {"frameW":187,"frameH":138,"pivotX":68.75,"pivotY":74.25,"srcScale":0.55,"sheets":{"player_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"reload":[3,10],"meleeattack":[4,8],"dead":[5,1]},"player_shotgun":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"reload":[3,10],"meleeattack":[4,8]},"player_handgun":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"reload":[3,8],"meleeattack":[4,8]},"player_knife":{"meleeattack":[0,8]},"rifle_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"gunner_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"scout_handgun":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"sniper_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"feet":{"idle":[0,1],"walk":[1,10],"run":[2,10]}},"muzzle":{"rifle":[183.8973607038123,31.122287390029328],"shotgun":[185.23623445825933,32.046773238602725],"handgun":[129.5954994511526,40.09330406147092]}};
+const WS = 0.32;                       // world px per source px
+const SPR_K = WS / SPR.srcScale;       // world px per atlas px
+const IMG = {};
+let sprReady = false;
+(function loadSprites() {
+  const names = Object.keys(SPR.sheets);
+  let left = names.length;
+  for (const n of names) {
+    const im = new Image();
+    im.onload = () => { if (--left === 0) sprReady = true; };
+    im.onerror = () => { left = -1; };
+    im.src = 'assets/' + n + '.png';
+    IMG[n] = im;
+  }
+})();
+function sheetFor(sk, art) { return (sk === 'player' ? 'player_' : sk + '_') + art; }
+function drawFrame(c, sheet, anim, frame) {
+  const info = SPR.sheets[sheet][anim] || SPR.sheets[sheet].idle;
+  const f = ((frame % info[1]) + info[1]) % info[1];
+  c.drawImage(IMG[sheet], f * SPR.frameW, info[0] * SPR.frameH, SPR.frameW, SPR.frameH,
+    -SPR.pivotX * SPR_K, -SPR.pivotY * SPR_K, SPR.frameW * SPR_K, SPR.frameH * SPR_K);
+}
+// o: { sheet, anim, frame, scale, feetA, feet: 'idle'|'walk'|'run', feetFrame, flash, alpha }
+function drawUnit(c, x, y, a, o) {
+  const sc = o.scale || 1;
+  c.save(); c.translate(x, y);
+  const sg = c.createRadialGradient(4, 6, 2, 4, 6, 24 * sc);
+  sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = sg; c.beginPath(); c.ellipse(4, 6, 24 * sc, 20 * sc, 0, 0, TAU); c.fill();
+  c.save(); c.rotate(o.feetA == null ? a : o.feetA); c.scale(sc, sc);
+  drawFrame(c, 'feet', o.feet || 'idle', o.feetFrame || 0);
+  c.restore();
+  c.rotate(a); c.scale(sc, sc);
+  drawFrame(c, o.sheet, o.anim, o.frame);
+  if (o.flash > 0) {
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, o.flash) * 0.7;
+    drawFrame(c, o.sheet, o.anim, o.frame);
+  }
+  c.restore();
+}
+function drawCorpse(c, x, y, a, sk, art, sc) {
+  const sheet = sk === 'player' ? 'player_rifle' : sheetFor(sk, art);
+  c.save(); c.translate(x, y); c.rotate(a); c.scale(sc || 1, sc || 1);
+  drawFrame(c, sheet, 'dead', 0);
+  c.restore();
+}
+
 // ───────────────────────── wall / vehicle art (drawn every frame) ─────────────────────────
 function drawSolid(c, o) {
   switch (o.kind) {
@@ -846,6 +900,7 @@ function drawSolid(c, o) {
       c.fillStyle = '#34372f'; c.fillRect(o.x, o.y, o.w, o.h);
       c.fillStyle = '#585b52'; c.fillRect(o.x + 1.5, o.y + 1.5, o.w - 3, o.h - 3);
       c.fillStyle = '#4b4e46'; c.fillRect(o.x + 4, o.y + 4, o.w - 8, o.h - 8);
+      c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 1.6; c.strokeRect(o.x, o.y, o.w, o.h);
       c.fillStyle = 'rgba(255,255,255,.08)';
       if (o.w > o.h) c.fillRect(o.x, o.y, o.w, 2); else c.fillRect(o.x, o.y, 2, o.h);
       c.fillStyle = 'rgba(0,0,0,.3)';
@@ -867,7 +922,7 @@ function drawSolid(c, o) {
       const horiz = o.w > o.h;
       if (horiz) for (let x = o.x + 6; x < o.x + o.w - 4; x += 9) c.fillRect(x, o.y + 3, 3, o.h - 6);
       else for (let y = o.y + 6; y < o.y + o.h - 4; y += 9) c.fillRect(o.x + 3, y, o.w - 6, 3);
-      c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 2; c.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
+      c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 2; c.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
       c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(o.x, o.y, o.w, 2);
       break;
     }
@@ -876,6 +931,7 @@ function drawSolid(c, o) {
 }
 function drawVehicle(c, o) {
   c.save();
+  c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 2; c.strokeRect(o.x, o.y, o.w, o.h);
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   c.translate(cx, cy);
   let w = o.w, h = o.h;
@@ -964,15 +1020,15 @@ const distVol = (x, y) => clamp(1 - dist(x, y, P.x, P.y) / 1500, 0, 1) ** 1.5;
 
 // ───────────────────────── game data ─────────────────────────
 const WEAPONS = [
-  { name: 'KS-47 avtomat', short: 'KS-47', dmg: 30, rate: 10, mag: 30, reserve: 150, reload: 2.1, spread: 0.03, bloom: 0.012, maxBloom: 0.1, speed: 2200, pellets: 1, range: 900, auto: true, noise: 900, kick: 2.2, snd: 'ar', gun: 34 },
-  { name: "Bo'ri-12 drobovik", short: "BO'RI-12", dmg: 15, rate: 1.4, mag: 7, reserve: 35, reload: 2.5, spread: 0.15, bloom: 0, maxBloom: 0, speed: 1800, pellets: 9, range: 420, auto: false, noise: 950, kick: 6, snd: 'sg', gun: 30 },
-  { name: "Signal-9 to'pponcha", short: 'SIGNAL-9', dmg: 26, rate: 5, mag: 12, reserve: 72, reload: 1.3, spread: 0.025, bloom: 0.02, maxBloom: 0.08, speed: 2000, pellets: 1, range: 650, auto: false, noise: 600, kick: 1.5, snd: 'pt', gun: 18 },
+  { name: 'KS-47 avtomat', short: 'KS-47', dmg: 30, rate: 10, mag: 30, reserve: 150, reload: 2.1, spread: 0.03, bloom: 0.012, maxBloom: 0.1, speed: 2200, pellets: 1, range: 900, auto: true, noise: 900, kick: 2.2, snd: 'ar', gun: 34, art: 'rifle' },
+  { name: "Bo'ri-12 drobovik", short: "BO'RI-12", dmg: 15, rate: 1.4, mag: 7, reserve: 35, reload: 2.5, spread: 0.15, bloom: 0, maxBloom: 0, speed: 1800, pellets: 9, range: 420, auto: false, noise: 950, kick: 6, snd: 'sg', gun: 30, art: 'shotgun' },
+  { name: "Signal-9 to'pponcha", short: 'SIGNAL-9', dmg: 26, rate: 5, mag: 12, reserve: 72, reload: 1.3, spread: 0.025, bloom: 0.02, maxBloom: 0.08, speed: 2000, pellets: 1, range: 650, auto: false, noise: 600, kick: 1.5, snd: 'pt', gun: 18, art: 'handgun' },
 ];
 const ETYPES = {
-  rifle: { name: 'Avtomatchi', hp: 100, walk: 70, run: 150, vis: 640, fov: 2.0, rate: 8, burst: [3, 6], pause: [0.55, 1.2], dmg: 9, spread: 0.075, range: 760, pref: 360, turn: 5, react: 1, gun: 32, snd: 'ar' },
-  scout: { name: 'Razvedkachi', hp: 75, walk: 85, run: 200, vis: 560, fov: 2.1, rate: 13, burst: [5, 9], pause: [0.45, 0.9], dmg: 6, spread: 0.11, range: 520, pref: 220, turn: 7, react: 0.85, gun: 24, snd: 'smg' },
-  gunner: { name: 'Pulemyotchi', hp: 230, armor: 0.3, walk: 55, run: 105, vis: 620, fov: 1.9, rate: 11, burst: [9, 15], pause: [1.0, 1.8], dmg: 8, spread: 0.13, range: 760, pref: 420, turn: 3.5, react: 1.2, gun: 38, scale: 1.14, snd: 'lmg' },
-  sniper: { name: 'Snayper', hp: 80, walk: 60, run: 120, vis: 1150, fov: 1.2, rate: 0.5, burst: [1, 1], pause: [2.4, 3.2], dmg: 48, spread: 0.012, range: 1300, pref: 0, turn: 1.6, react: 1.4, gun: 46, snd: 'sniper', static: true },
+  rifle: { name: 'Avtomatchi', hp: 100, walk: 70, run: 150, vis: 640, fov: 2.0, rate: 8, burst: [3, 6], pause: [0.55, 1.2], dmg: 9, spread: 0.075, range: 760, pref: 360, turn: 5, react: 1, gun: 32, snd: 'ar', art: 'rifle' },
+  scout: { name: 'Razvedkachi', hp: 75, walk: 85, run: 200, vis: 560, fov: 2.1, rate: 13, burst: [5, 9], pause: [0.45, 0.9], dmg: 6, spread: 0.11, range: 520, pref: 220, turn: 7, react: 0.85, gun: 24, snd: 'smg', art: 'handgun' },
+  gunner: { name: 'Pulemyotchi', hp: 230, armor: 0.3, walk: 55, run: 105, vis: 620, fov: 1.9, rate: 11, burst: [9, 15], pause: [1.0, 1.8], dmg: 8, spread: 0.13, range: 760, pref: 420, turn: 3.5, react: 1.2, gun: 38, scale: 1.12, snd: 'lmg', art: 'rifle' },
+  sniper: { name: 'Snayper', hp: 80, walk: 60, run: 120, vis: 1150, fov: 1.2, rate: 0.5, burst: [1, 1], pause: [2.4, 3.2], dmg: 48, spread: 0.012, range: 1300, pref: 0, turn: 1.6, react: 1.4, gun: 46, snd: 'sniper', static: true, art: 'rifle' },
 };
 const DIFFS = {
   easy: { dmg: 0.55, spread: 1.45, react: 1.0, detect: 0.7, gren: 0.25, score: 0.8, label: 'Oson' },
@@ -1030,7 +1086,7 @@ function newGame() {
     x: LZ_IN.x + 20, y: LZ_IN.y - 30, a: -0.6, r: 13, hp: 100, armor: 60, stam: 100,
     wi: 0, mag: WEAPONS.map(w => w.mag), res: WEAPONS.map(w => w.reserve), reloadT: 0, switchT: 0, fireCd: 0, bloom: 0,
     gren: 3, med: 2, healT: 0, dodgeT: 0, dodgeCd: 0, dvx: 0, dvy: 0, iT: 0, walk: 0, moving: false, sprint: false,
-    interactT: 0, interactTarget: null, crouch: false, stepT: 0, knifeT: 0, knifeCd: 0, grenAim: false, takedownTarget: null, dead: false, hurt: 0, flash: 0, triggerHeld: false, staminaIdle: 0
+    interactT: 0, interactTarget: null, shootT: 9, moveT: 0, animT: 0, fa: 0, crouch: false, stepT: 0, knifeT: 0, knifeCd: 0, grenAim: false, takedownTarget: null, dead: false, hurt: 0, flash: 0, triggerHeld: false, staminaIdle: 0
   };
   enemies = ENEMY_SPAWNS.map(s => makeEnemy(s[0], s[1], s[2]));
   bullets = []; particles = []; casings = []; grenades = []; pickups = []; floats = []; feed = []; lights = []; pings = []; dmgDirs = [];
@@ -1170,8 +1226,10 @@ function aimAngle() {
   const wx = cam.x + (mouse.x - W / 2) / ZOOM, wy = cam.y + (mouse.y - H / 2) / ZOOM;
   return Math.atan2(wy - P.y, wx - P.x);
 }
-function muzzle(x, y, a, gl, sc = 1) {
-  return { x: x + (Math.cos(a) * gl - Math.sin(a) * 3.6) * sc, y: y + (Math.sin(a) * gl + Math.cos(a) * 3.6) * sc };
+function muzzle(x, y, a, gl, sc = 1, art) {
+  let fx = gl, fy = 3.6;
+  if (art && SPR.muzzle[art]) { fx = SPR.muzzle[art][0] * WS; fy = SPR.muzzle[art][1] * WS; }
+  return { x: x + (Math.cos(a) * fx - Math.sin(a) * fy) * sc, y: y + (Math.sin(a) * fx + Math.cos(a) * fy) * sc };
 }
 function ejectCasing(x, y, a) {
   const pa = a + Math.PI / 2 + rand(-0.3, 0.3), sp = rand(90, 170);
@@ -1180,7 +1238,8 @@ function ejectCasing(x, y, a) {
 function playerFire() {
   const w = WEAPONS[P.wi];
   P.mag[P.wi]--; stats.shots++;
-  const m = muzzle(P.x, P.y, P.a, w.gun);
+  const m = muzzle(P.x, P.y, P.a, w.gun, 1, w.art);
+  P.shootT = 0;
   const moving = P.moving ? 0.035 : 0;
   const ads = mouse.r && !IS_TOUCH ? 0.55 : 1;
   const sp = (w.spread + P.bloom + moving) * ads * (P.crouch ? 0.8 : 1);
@@ -1378,7 +1437,7 @@ function updatePlayer(dt) {
   }
   P.takedownTarget = td;
   if (pressed.has('KeyF') && P.knifeCd <= 0) {
-    P.knifeCd = 0.55; P.knifeT = 0.22; P.reloadT = 0;
+    P.knifeCd = 0.55; P.knifeT = 0.32; P.reloadT = 0;
     if (td) {
       stats.takedowns++;
       addFloat(td.x, td.y - 28, "JIM YO'Q QILINDI", '#5ccfbf');
@@ -1487,8 +1546,10 @@ function killEnemy(e, fromA, silent) {
   e.dead = true; stats.kills++; killMarker = 0.45;
   const px = e.x + Math.cos(fromA) * 6, py = e.y + Math.sin(fromA) * 6;
   bakeBloodPool(px, py, e.type === 'gunner' ? 34 : 28);
-  bake(c => drawSoldier(c, px, py, fromA + Math.PI + rand(-0.4, 0.4), Object.assign({}, STYLE[e.type], { cloth: tone(STYLE[e.type].cloth, -0.3), vest: tone(STYLE[e.type].vest, -0.3), helmet: tone(STYLE[e.type].helmet, -0.25) }), { gun: e.T.gun, scale: e.T.scale, dead: true }));
-  bake(c => { c.save(); c.translate(e.x + rand(-20, 20), e.y + rand(-20, 20)); c.rotate(rand(0, TAU)); c.fillStyle = '#121416'; c.fillRect(-e.T.gun / 2, -2, e.T.gun, 4.2); c.restore(); });
+  const ca = fromA + Math.PI + rand(-0.4, 0.4);
+  if (sprReady) bake(c => drawCorpse(c, px, py, ca, e.type, e.T.art, e.T.scale));
+  else bake(c => drawSoldier(c, px, py, ca, Object.assign({}, STYLE[e.type], { cloth: tone(STYLE[e.type].cloth, -0.3), vest: tone(STYLE[e.type].vest, -0.3), helmet: tone(STYLE[e.type].helmet, -0.25) }), { gun: e.T.gun, scale: e.T.scale, dead: true }));
+  if (!sprReady) bake(c => { c.save(); c.translate(e.x + rand(-20, 20), e.y + rand(-20, 20)); c.rotate(rand(0, TAU)); c.fillStyle = '#121416'; c.fillRect(-e.T.gun / 2, -2, e.T.gun, 4.2); c.restore(); });
   addFeed(silent ? `${e.T.name} jimgina yo'q qilindi` : `${e.T.name} yo'q qilindi`, silent ? '#5ccfbf' : '#e8e4d6');
   const r = Math.random();
   if (r < 0.55) pickups.push({ x: e.x + rand(-14, 14), y: e.y + rand(-14, 14), kind: 'ammo' });
@@ -1501,7 +1562,7 @@ function shade(hex) {
   return `rgb(${((n >> 16) & 255) * f | 0},${((n >> 8) & 255) * f | 0},${(n & 255) * f | 0})`;
 }
 function enemyFire(e) {
-  const m = muzzle(e.x, e.y, e.a, e.T.gun, e.T.scale || 1);
+  const m = muzzle(e.x, e.y, e.a, e.T.gun, e.T.scale || 1, e.T.art);
   const sp = e.T.spread * DIFF.spread * (e.moving ? 1.35 : 1) * (P.moving ? 1.15 : 1);
   const a = e.a + gauss() * sp;
   const speed = e.type === 'sniper' ? 2800 : 1700;
@@ -1665,7 +1726,7 @@ function updateBullets(dt) {
     if (b.own === 'p') {
       for (const e of enemies) {
         if (e.dead) continue;
-        const t = segCircle(b.x, b.y, nx, ny, e.x, e.y, 14 * (e.T.scale || 1));
+        const t = segCircle(b.x, b.y, nx, ny, e.x, e.y, 16 * (e.T.scale || 1));
         if (t >= 0 && t < bestT) { bestT = t; hit = e; kind = 'enemy'; }
       }
     } else if (!P.dead) {
@@ -1864,7 +1925,7 @@ function drawSolids3D(c, list, cx, cy) {
 }
 function lampHead(L, cx, cy) { const k = 0.1; return [L[0] + (L[0] - cx) * k + 6, L[1] + (L[1] - cy) * k - 6]; }
 function flashlightPoly(e) {
-  const m = muzzle(e.x, e.y, e.a, e.T.gun, e.T.scale || 1);
+  const m = muzzle(e.x, e.y, e.a, e.T.gun, e.T.scale || 1, e.T.art);
   const half = 0.36, len = 300, n = 12;
   const pts = [m.x, m.y];
   const bx0 = m.x - len, bx1 = m.x + len, by0 = m.y - len, by1 = m.y + len;
@@ -2003,16 +2064,45 @@ function render(dt) {
     e.va = clamp(e.va + (visible ? dt * 8 : -dt * 5), 0, 1);
     if (e.va <= 0.01 || !inView(e.x, e.y, 40)) continue;
     ctx.globalAlpha = e.va;
-    drawSoldier(ctx, e.x, e.y, e.a, STYLE[e.type], { sk: e.type, gun: e.T.gun, scale: e.T.scale, walk: e.walk, moving: e.moving, flash: Math.max(0, e.flash) / 0.12 });
+    if (sprReady) {
+      const mv = e.lx != null ? dist(e.lx, e.ly, e.x, e.y) : 0;
+      if (mv > 0.2) { e.fa = Math.atan2(e.y - e.ly, e.x - e.lx); e.mt = (e.mt || 0) + dt; }
+      const moving = mv > 0.2;
+      const shoot = e.shotT < 0.09;
+      drawUnit(ctx, e.x, e.y, e.a, {
+        sheet: sheetFor(e.type, e.T.art), scale: e.T.scale,
+        anim: shoot ? 'shoot' : moving ? 'move' : 'idle',
+        frame: shoot ? Math.floor(e.shotT / 0.03) : moving ? Math.floor(e.mt * 13) : Math.floor((t + e.look) * 7),
+        feetA: moving ? e.fa : null, feet: moving ? (mv / dt > 160 ? 'run' : 'walk') : 'idle', feetFrame: Math.floor((e.mt || 0) * 15),
+        flash: Math.max(0, e.flash) / 0.12
+      });
+    } else drawSoldier(ctx, e.x, e.y, e.a, STYLE[e.type], { sk: e.type, gun: e.T.gun, scale: e.T.scale, walk: e.walk, moving: e.moving, flash: Math.max(0, e.flash) / 0.12 });
+    e.lx = e.x; e.ly = e.y;
     ctx.globalAlpha = 1;
   }
-  if (P.dead) drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { gun: WEAPONS[P.wi].gun, dead: true });
-  else if (state !== 'menu') {
-    ctx.strokeStyle = 'rgba(92,207,191,.45)'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(P.x, P.y, 21, P.a + 0.7, P.a + TAU - 0.7); ctx.stroke();
-    drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { sk: 'player', gun: WEAPONS[P.wi].gun, walk: P.walk, moving: P.moving, flash: P.iT > 0 ? 0.6 : 0, scale: P.crouch ? 0.9 : 1 });
+  if (P.dead) {
+    if (sprReady) drawCorpse(ctx, P.x, P.y, P.a, 'player', 'rifle', 1);
+    else drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { gun: WEAPONS[P.wi].gun, dead: true });
+  } else if (state !== 'menu') {
+    ctx.strokeStyle = 'rgba(92,207,191,.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(P.x, P.y, 24, P.a + 0.8, P.a + TAU - 0.8); ctx.stroke();
+    const w = WEAPONS[P.wi];
+    if (state === 'play') { P.shootT += dt; P.animT += dt; if (P.moving) { P.moveT += dt * (P.sprint ? 1.45 : P.crouch ? 0.6 : 1); P.fa = Math.atan2(P.y - (P.ly ?? P.y), P.x - (P.lx ?? P.x)); } }
+    P.lx = P.x; P.ly = P.y;
+    if (sprReady) {
+      let sheet = sheetFor('player', w.art), anim = 'idle', frame = Math.floor(P.animT * 7);
+      if (P.knifeT > 0) { sheet = 'player_knife'; anim = 'meleeattack'; frame = Math.floor((1 - P.knifeT / 0.32) * 8); }
+      else if (P.reloadT > 0) { anim = 'reload'; frame = Math.floor((1 - P.reloadT / w.reload) * SPR.sheets[sheet].reload[1]); }
+      else if (P.shootT < 0.09) { anim = 'shoot'; frame = Math.floor(P.shootT / 0.03); }
+      else if (P.moving) { anim = 'move'; frame = Math.floor(P.moveT * 13); }
+      drawUnit(ctx, P.x, P.y, P.a, {
+        sheet, anim, frame, scale: P.crouch ? 0.9 : 1,
+        feetA: P.moving ? P.fa : null, feet: P.moving ? (P.sprint ? 'run' : 'walk') : 'idle', feetFrame: Math.floor(P.moveT * 15),
+        flash: P.iT > 0 ? 0.6 : 0
+      });
+    } else drawSoldier(ctx, P.x, P.y, P.a, STYLE.player, { sk: 'player', gun: w.gun, walk: P.walk, moving: P.moving, flash: P.iT > 0 ? 0.6 : 0, scale: P.crouch ? 0.9 : 1 });
     if (P.knifeT > 0) {
-      const k = 1 - P.knifeT / 0.22;
+      const k = 1 - P.knifeT / 0.32;
       ctx.strokeStyle = `rgba(230,240,245,${0.8 * (1 - k)})`; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(P.x, P.y, 34, P.a - 0.9 + k * 0.6, P.a + 0.3 + k * 0.6); ctx.stroke();
     }
@@ -2112,7 +2202,7 @@ function render(dt) {
   }
   for (const e of enemies) {
     if (e.dead || e.type !== 'sniper' || e.state !== 'combat' || !e.sees) continue;
-    const m = muzzle(e.x, e.y, e.a, e.T.gun);
+    const m = muzzle(e.x, e.y, e.a, e.T.gun, 1, e.T.art);
     let ex = m.x + Math.cos(e.a) * 1400, ey = m.y + Math.sin(e.a) * 1400, best = 1;
     for (const o of sightObs) { const tt = segRect(m.x, m.y, ex, ey, o); if (tt >= 0 && tt < best) best = tt; }
     ex = m.x + (ex - m.x) * best; ey = m.y + (ey - m.y) * best;

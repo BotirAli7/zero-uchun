@@ -1,0 +1,6 @@
+Character sprites (player and enemy soldiers, rifle/shotgun/handgun/knife animations, feet)
+  "Animated Top Down Survivor Player" by rileygombart
+  https://opengameart.org/content/animated-top-down-survivor-player
+  License: CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
+  Changes: frames cropped, scaled and packed into atlases; enemy variants recoloured
+  (tools/build_sprites.py).
