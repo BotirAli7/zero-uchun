@@ -55,7 +55,7 @@ let L = {};               // lights
     const tick = () => { R3.progress = ++done / total; };
     const tex = {};
     await Promise.all([
-      ...MODELS.map(n => loader.loadAsync('assets/models/' + n + '.glb').then(g => {
+      ...MODELS.map(n => loader.loadAsync('assets/models/' + n + '.json').then(g => {
         const box = new THREE.Box3().setFromObject(g.scene);
         g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         lib[n] = { scene: g.scene, size: box.getSize(new THREE.Vector3()), min: box.min.clone(), center: box.getCenter(new THREE.Vector3()) };
@@ -66,7 +66,7 @@ let L = {};               // lights
         if (n.endsWith('_col')) t.colorSpace = THREE.SRGBColorSpace;
         tex[n] = t; tick();
       })),
-      loader.loadAsync('assets/models/Soldier.glb').then(g => { lib.soldier = g; tick(); }),
+      loader.loadAsync('assets/models/Soldier.json').then(g => { lib.soldier = g; tick(); }),
     ]);
     buildWorld(tex);
     buildLights();

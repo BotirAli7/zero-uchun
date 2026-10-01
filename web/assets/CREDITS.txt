@@ -7,7 +7,10 @@
 3D props (web/assets/models) - Poly Haven, CC0 1.0 (https://polyhaven.com/license)
   covered_car, concrete_road_barrier, street_lamp_01, Barrel_01, wooden_crate_01, ammo_box, metal_office_desk,
   Sofa_01, steel_frame_shelves_01, old_bed_frame, utility_box_01, metal_trash_can, portable_generator, shrub_03,
-  old_tyre, cardboard_box_01, WoodenChair_01. Converted to GLB with 512 px WebP textures (gltf-transform).
+  old_tyre, cardboard_box_01, WoodenChair_01. Converted with gltf-transform (512 px WebP textures) and
+  stored as self-contained glTF JSON (tools/glb_to_json.py).
+
+three.js r170 (web/vendor/three), MIT licence (web/vendor/three/LICENSE.txt).
 
 Textures (web/assets/tex)
   Poly Haven, CC0: damaged_plaster, concrete_wall_006, rusty_corrugated_iron, floor_tiles_06 (tiles.jpg).
