@@ -1,11 +1,17 @@
-Soldier sprites
-  Rendered from the rigged "Soldier.glb" model shipped with the three.js examples
-  (https://github.com/mrdoob/three.js/tree/r170/examples/models/gltf). The character
-  ("Vanguard") and its Idle/Walk/Run animations come from Adobe Mixamo. Weapons,
-  arm poses (IK), recolouring and the top-down render are done by tools/soldier_render.
-  Before a commercial release, download the same character from mixamo.com with your
-  own (free) Adobe account and re-render, so the licence is in your name.
+3D soldier
+  "Soldier.glb" from the three.js examples (https://github.com/mrdoob/three.js/tree/r170/examples/models/gltf).
+  The character ("Vanguard") and its Idle/Walk/Run animations come from Adobe Mixamo. Weapons, arm poses (IK)
+  and faction tints are added at runtime by web/r3d.js. Before a commercial release, download the same
+  character from mixamo.com with your own (free) Adobe account so the licence is in your name.
 
-Ground, road, floor and crate textures (web/assets/tex)
-  ambientCG (https://ambientcg.com), CC0 1.0:
-  Asphalt022, Grass004, Ground037, Concrete034, WoodFloor041, Tiles074.
+3D props (web/assets/models) - Poly Haven, CC0 1.0 (https://polyhaven.com/license)
+  covered_car, concrete_road_barrier, street_lamp_01, Barrel_01, wooden_crate_01, ammo_box, metal_office_desk,
+  Sofa_01, steel_frame_shelves_01, old_bed_frame, utility_box_01, metal_trash_can, portable_generator, shrub_03,
+  old_tyre, cardboard_box_01, WoodenChair_01. Converted to GLB with 512 px WebP textures (gltf-transform).
+
+Textures (web/assets/tex)
+  Poly Haven, CC0: damaged_plaster, concrete_wall_006, rusty_corrugated_iron, floor_tiles_06 (tiles.jpg).
+  ambientCG, CC0 (https://ambientcg.com): Asphalt022, Grass004, Ground037, Concrete034, WoodFloor041.
+
+2D fallback sprites (web/assets/*.png)
+  Rendered from the same soldier model by tools/soldier_render.

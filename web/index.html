@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Kestrel Ops</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Kestrel City: tepadan ko'rinadigan taktik operatsiya o'yini">
@@ -21,7 +22,9 @@
 }
 [hidden]{display:none!important}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);overflow:hidden;font-family:var(--body);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none;background:var(--bg)}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none;background:var(--bg);z-index:1}
+#game.over3d{background:transparent}
+#touch{z-index:5}
 .screen{position:fixed;inset:0;z-index:10;display:flex;overflow-y:auto;padding:24px clamp(16px,6vw,96px);background:linear-gradient(90deg,rgba(5,8,7,.94) 0%,rgba(5,8,7,.78) 48%,rgba(5,8,7,.18) 100%)}
 .panel{margin-block:auto;max-width:540px;width:100%;display:flex;flex-direction:column;gap:20px}
 .eyebrow{font:600 12px/1.3 var(--display);letter-spacing:.2em;color:var(--accent);text-transform:uppercase}
@@ -460,6 +463,7 @@ function findPath(sx, sy, tx, ty) {
 
 // ───────────────────────── art: pre-rendered ground ─────────────────────────
 const puddles = [];
+let groundDirty = true;
 const ground = document.createElement('canvas');
 ground.width = MW; ground.height = MH;
 const gctx = ground.getContext('2d');
@@ -481,6 +485,7 @@ function texFill(c, name, scale, rot) {
   return pt;
 }
 function paintGround() {
+  groundDirty = true;
   const c = gctx, R = mulberry32(7);
   const tx = texReady;
   c.fillStyle = tx ? texFill(c, 'grass', 0.45) : '#434835'; c.fillRect(0, 0, MW, MH);
@@ -661,8 +666,8 @@ function paintGround() {
     if (o.kind !== 'tree') c.fillRect(o.x, o.y, o.w, o.h);
   }
   c.restore();
-  // soft canopy shadows
-  for (const t of trees) {
+  // soft canopy shadows (the 3D renderer casts real ones)
+  if (!use3D()) for (const t of trees) {
     const g = c.createRadialGradient(t.x + 12, t.y + 16, t.r * 0.2, t.x + 12, t.y + 16, t.r * 1.1);
     g.addColorStop(0, 'rgba(0,0,0,.32)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = g; c.beginPath(); c.arc(t.x + 12, t.y + 16, t.r * 1.1, 0, TAU); c.fill();
@@ -1227,7 +1232,7 @@ function dust(x, y, n, col) {
 function blood(x, y, a, n) {
   for (let i = 0; i < n; i++) { const aa = a + rand(-0.6, 0.6), sp = rand(60, 260); addP({ t: 'blood', x, y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: rand(0.15, 0.4), max: 0.4, size: rand(1.5, 3.2) }); }
 }
-function bake(fn) { gctx.save(); fn(gctx); gctx.restore(); }
+function bake(fn) { gctx.save(); fn(gctx); gctx.restore(); groundDirty = true; }
 function bakeBloodPool(x, y, r) {
   bake(c => {
     for (let i = 0; i < 6; i++) {
@@ -1596,7 +1601,9 @@ function killEnemy(e, fromA, silent) {
   const px = e.x + Math.cos(fromA) * 6, py = e.y + Math.sin(fromA) * 6;
   bakeBloodPool(px, py, e.type === 'gunner' ? 34 : 28);
   const ca = fromA + Math.PI + rand(-0.4, 0.4);
-  if (sprReady) bake(c => drawCorpse(c, px, py, ca, e.type, e.T.art, e.T.scale));
+  e.fallA = fromA;
+  if (use3D()) { /* the 3D body stays in the scene */ }
+  else if (sprReady) bake(c => drawCorpse(c, px, py, ca, e.type, e.T.art, e.T.scale));
   else bake(c => drawSoldier(c, px, py, ca, Object.assign({}, STYLE[e.type], { cloth: tone(STYLE[e.type].cloth, -0.3), vest: tone(STYLE[e.type].vest, -0.3), helmet: tone(STYLE[e.type].helmet, -0.25) }), { gun: e.T.gun, scale: e.T.scale, dead: true }));
   if (!sprReady) bake(c => { c.save(); c.translate(e.x + rand(-20, 20), e.y + rand(-20, 20)); c.rotate(rand(0, TAU)); c.fillStyle = '#121416'; c.fillRect(-e.T.gun / 2, -2, e.T.gun, 4.2); c.restore(); });
   addFeed(silent ? `${e.T.name} jimgina yo'q qilindi` : `${e.T.name} yo'q qilindi`, silent ? '#5ccfbf' : '#e8e4d6');
@@ -2045,11 +2052,130 @@ function renderLights(vis, t, inView, sx, sy) {
   for (const l of lights) { const k = l.life / l.max; glow(l.x, l.y, l.r * 1.6, l.col, Math.min(1, l.a * 2.2) * k); }
   for (const p of particles) if (p.t === 'fire') glow(p.x, p.y, p.size * 4, '255,140,60', 0.35 * p.life / p.max);
 }
+function drawEmissive(t, inView, bulbs) {
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  if (bulbs) for (const L of LAMPS) {
+    if (!inView(L[0], L[1], 120)) continue;
+    const h = lampHead(L, cam.x, cam.y);
+    const g = ctx.createRadialGradient(h[0] + 1, h[1], 0, h[0] + 1, h[1], 34);
+    g.addColorStop(0, 'rgba(255,220,160,.95)'); g.addColorStop(0.25, 'rgba(255,190,110,.4)'); g.addColorStop(1, 'rgba(255,170,90,0)');
+    ctx.fillStyle = g; ctx.fillRect(h[0] - 34, h[1] - 34, 68, 68);
+  }
+  if (bulbs) for (const il of INTERIOR) {
+    if (!inView(il.x, il.y, 60)) continue;
+    ctx.fillStyle = 'rgba(200,225,255,.55)';
+    if (il.horiz) ctx.fillRect(il.x - 22, il.y - 2, 44, 4); else ctx.fillRect(il.x - 2, il.y - 22, 4, 44);
+  }
+  ctx.lineCap = 'round';
+  for (const b of bullets) {
+    const len = b.sn ? 0.06 : 0.026;
+    const sx0 = b.dead ? b.px : b.x - b.vx * len, sy0 = b.dead ? b.py : b.y - b.vy * len;
+    const col = b.own === 'p' ? '255,214,130' : '255,110,70';
+    const g = ctx.createLinearGradient(sx0, sy0, b.x, b.y);
+    g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${b.dead ? 0.35 : 0.55})`);
+    ctx.strokeStyle = g; ctx.lineWidth = b.sn ? 6 : 4.5;
+    ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(b.x, b.y); ctx.stroke();
+    const g2 = ctx.createLinearGradient(sx0, sy0, b.x, b.y);
+    g2.addColorStop(0, 'rgba(255,250,235,0)'); g2.addColorStop(1, `rgba(255,250,235,${b.dead ? 0.5 : 0.95})`);
+    ctx.strokeStyle = g2; ctx.lineWidth = b.sn ? 1.8 : 1.3;
+    ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  for (const e of enemies) {
+    if (e.dead || e.type !== 'sniper' || e.state !== 'combat' || !e.sees) continue;
+    const m = muzzle(e.x, e.y, e.a, e.T.gun, 1, e.T.art);
+    let ex = m.x + Math.cos(e.a) * 1400, ey = m.y + Math.sin(e.a) * 1400, best = 1;
+    for (const o of sightObs) { const tt = segRect(m.x, m.y, ex, ey, o); if (tt >= 0 && tt < best) best = tt; }
+    ex = m.x + (ex - m.x) * best; ey = m.y + (ey - m.y) * best;
+    ctx.strokeStyle = `rgba(255,40,30,${0.3 + e.charge * 0.5})`; ctx.lineWidth = 1 + e.charge * 1.6;
+    ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(ex, ey); ctx.stroke();
+    const dg = ctx.createRadialGradient(ex, ey, 0, ex, ey, 12); dg.addColorStop(0, 'rgba(255,60,50,.9)'); dg.addColorStop(1, 'rgba(255,60,50,0)');
+    ctx.fillStyle = dg; ctx.fillRect(ex - 12, ey - 12, 24, 24);
+  }
+  for (const l of lights) {
+    const k = l.life / l.max, r = l.r * 0.45;
+    const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
+    g.addColorStop(0, `rgba(${l.col},${l.a * k})`); g.addColorStop(1, `rgba(${l.col},0)`);
+    ctx.fillStyle = g; ctx.fillRect(l.x - r, l.y - r, r * 2, r * 2);
+  }
+  for (const p of particles) {
+    const k = p.life / p.max;
+    if (p.t === 'spark') {
+      ctx.strokeStyle = p.col; ctx.globalAlpha = k; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.025, p.y - p.vy * 0.025); ctx.stroke(); ctx.globalAlpha = 1;
+    } else if (p.t === 'fire') {
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+      g.addColorStop(0, `rgba(255,225,150,${k})`); g.addColorStop(0.5, `rgba(255,120,40,${k * 0.7})`); g.addColorStop(1, 'rgba(255,80,20,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill();
+    } else if (p.t === 'flash') {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.scale(p.size, p.size);
+      const fg = ctx.createRadialGradient(4, 0, 0, 4, 0, 16); fg.addColorStop(0, `rgba(255,240,200,${k})`); fg.addColorStop(1, 'rgba(255,180,80,0)');
+      ctx.fillStyle = fg; ctx.fillRect(-12, -16, 32, 32);
+      ctx.fillStyle = `rgba(255,232,170,${k})`;
+      ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(24, 0); ctx.lineTo(0, 4); ctx.lineTo(4, 0); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(10, -10); ctx.lineTo(7, 0); ctx.lineTo(10, 10); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    } else if (p.t === 'ring') {
+      ctx.strokeStyle = `rgba(255,220,170,${k * 0.6})`; ctx.lineWidth = 6 * k;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 - k) + 10, 0, TAU); ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+}
+function use3D() { return !!(window.__R3 && window.__R3.ready); }
+function render2DOverlay(dt, t, vis, inView, worldT, vx, vy, vw, vh) {
+  if (ext.active) {
+    ctx.strokeStyle = `rgba(240,162,59,${0.5 + Math.sin(t * 4) * 0.25})`; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(EXT.x, EXT.y, EXT.r, 0, TAU); ctx.stroke();
+    if (ext.hold > 0) { ctx.strokeStyle = '#f0a23b'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(EXT.x, EXT.y, EXT.r + 10, -Math.PI / 2, -Math.PI / 2 + TAU * ext.hold / ext.need); ctx.stroke(); }
+  }
+  ctx.fillStyle = '#d6b05a';
+  for (const c of casings) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.fillRect(-2.2, -1, 4.4, 2); ctx.restore(); }
+  for (const g of grenades) {
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(g.x + 2 + g.z * 0.3, g.y + 3 + g.z * 0.4, 5, 4, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#4f5d36'; ctx.beginPath(); ctx.arc(g.x, g.y - g.z, 5, 0, TAU); ctx.fill();
+    ctx.fillStyle = g.fuse < 0.6 && Math.floor(t * 12) % 2 ? '#ff5544' : '#222'; ctx.fillRect(g.x - 1.5, g.y - g.z - 7, 3, 3);
+  }
+  for (const p of particles) {
+    const k = p.life / p.max;
+    if (p.t === 'smoke') { ctx.fillStyle = `rgba(${p.col},${p.a * k})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
+    else if (p.t === 'blood') { ctx.fillStyle = `rgba(120,12,12,${0.9 * k + 0.1})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
+    else if (p.t === 'splash') { ctx.strokeStyle = `rgba(190,210,220,${0.4 * k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.6 - k), 0, TAU); ctx.stroke(); }
+  }
+  if (vis) {
+    ctx.beginPath(); ctx.rect(vx - 40, vy - 40, vw + 80, vh + 80);
+    ctx.moveTo(vis[0], vis[1]);
+    for (let i = 2; i < vis.length; i += 2) ctx.lineTo(vis[i], vis[i + 1]);
+    ctx.closePath(); ctx.fillStyle = 'rgba(2,4,7,.55)'; ctx.fill('evenodd');
+  }
+  if (state !== 'menu' && heliOut.t < 6) drawHeli(LZ_IN.x - 40 - heliOut.t * heliOut.t * 60, LZ_IN.y - 60 - heliOut.t * heliOut.t * 40, -2.5, 1 + heliOut.t * 0.08, t);
+  if (ext.active) { const k = clamp(ext.hold / ext.need, 0, 1); drawHeli(EXT.x + (1 - k) * 260, EXT.y - (1 - k) * 220, Math.PI * 0.75, 1.35 - k * 0.3, t); }
+  drawEmissive(t, inView, false);
+  // lamp heads: project the 4.5 m bulb height through the 3D camera
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const ch = window.__R3.camH * M2W, lh = window.__R3.lampH * M2W, k3 = ch / (ch - lh);
+  for (const L of LAMPS) {
+    if (!inView(L[0], L[1], 200)) continue;
+    const hx = cam.x + (L[0] - cam.x) * k3, hy = cam.y + (L[1] - cam.y) * k3;
+    const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, 46);
+    g.addColorStop(0, 'rgba(255,226,170,.95)'); g.addColorStop(0.18, 'rgba(255,196,120,.55)'); g.addColorStop(1, 'rgba(255,170,90,0)');
+    ctx.fillStyle = g; ctx.fillRect(hx - 46, hy - 46, 92, 92);
+  }
+  ctx.restore();
+  if (state !== 'menu') drawWorldMarkers(t, inView);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (vignette) ctx.drawImage(vignette, 0, 0, W, H);
+  if (!grainPat) grainPat = ctx.createPattern(grain, 'repeat');
+  if (grainPat && !RM && !lowQ) { ctx.save(); ctx.translate(Math.random() * 160, Math.random() * 160); ctx.fillStyle = grainPat; ctx.fillRect(-160, -160, W + 160, H + 160); ctx.restore(); }
+  if (state !== 'menu') drawHUD(t); else drawRain();
+}
 function render(dt) {
   soundsThisFrame = 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#0a0d0c'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const D3 = use3D();
+  if (D3) ctx.clearRect(0, 0, cv.width, cv.height);
+  else { ctx.fillStyle = '#0a0d0c'; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (!P) return;
   const sk = RM ? 0.15 : 0.6;
   const sx = shake ? rand(-shake, shake) * sk : 0, sy = shake ? rand(-shake, shake) * sk : 0;
@@ -2058,6 +2184,21 @@ function render(dt) {
   const vw = W / ZOOM, vh = H / ZOOM, vx = cam.x - vw / 2, vy = cam.y - vh / 2;
   const inView = (x, y, m) => x > vx - m && x < vx + vw + m && y > vy - m && y < vy + vh + m;
   const t = performance.now() / 1000;
+  const vis = state === 'menu' ? null : visPolygon(P.x, P.y, VIS_R);
+  if (D3) {
+    for (const e of enemies) {
+      if (e.dead) continue;
+      const visible = state === 'menu' || (dist(P.x, P.y, e.x, e.y) < VIS_R && !losBlocked(P.x, P.y, e.x, e.y));
+      e.va = clamp(e.va + (visible ? dt * 8 : -dt * 5), 0, 1);
+    }
+    for (const tr of trees) {
+      const near = dist(P.x, P.y, tr.x, tr.y) < tr.r * 1.1 && state !== 'menu';
+      tr.a = lerp(tr.a, near ? 0.25 : 1, Math.min(1, dt * 6));
+    }
+    window.__R3.render(dt, sx, sy, vis);
+    render2DOverlay(dt, t, vis, inView, worldT, vx, vy, vw, vh);
+    return;
+  }
 
   // 1. ground (with baked decals)
   const gx0 = clamp(Math.floor(vx), 0, MW), gy0 = clamp(Math.floor(vy), 0, MH), gx1 = clamp(Math.ceil(vx + vw), 0, MW), gy1 = clamp(Math.ceil(vy + vh), 0, MH);
@@ -2106,7 +2247,6 @@ function render(dt) {
   for (const c of casings) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.fillRect(-2.2, -1, 4.4, 2); ctx.restore(); }
 
   // 3. units
-  const vis = state === 'menu' ? null : visPolygon(P.x, P.y, VIS_R);
   for (const e of enemies) {
     if (e.dead) continue;
     const visible = state === 'menu' || (dist(P.x, P.y, e.x, e.y) < VIS_R && !losBlocked(P.x, P.y, e.x, e.y));
@@ -2222,73 +2362,7 @@ function render(dt) {
   worldT();
 
   // 7. emissive: bulbs, tracers, lasers, flashes, sparks, fire
-  ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  for (const L of LAMPS) {
-    if (!inView(L[0], L[1], 120)) continue;
-    const h = lampHead(L, cam.x, cam.y);
-    const g = ctx.createRadialGradient(h[0] + 1, h[1], 0, h[0] + 1, h[1], 34);
-    g.addColorStop(0, 'rgba(255,220,160,.95)'); g.addColorStop(0.25, 'rgba(255,190,110,.4)'); g.addColorStop(1, 'rgba(255,170,90,0)');
-    ctx.fillStyle = g; ctx.fillRect(h[0] - 34, h[1] - 34, 68, 68);
-  }
-  for (const il of INTERIOR) {
-    if (!inView(il.x, il.y, 60)) continue;
-    ctx.fillStyle = 'rgba(200,225,255,.55)';
-    if (il.horiz) ctx.fillRect(il.x - 22, il.y - 2, 44, 4); else ctx.fillRect(il.x - 2, il.y - 22, 4, 44);
-  }
-  ctx.lineCap = 'round';
-  for (const b of bullets) {
-    const len = b.sn ? 0.06 : 0.026;
-    const sx0 = b.dead ? b.px : b.x - b.vx * len, sy0 = b.dead ? b.py : b.y - b.vy * len;
-    const col = b.own === 'p' ? '255,214,130' : '255,110,70';
-    const g = ctx.createLinearGradient(sx0, sy0, b.x, b.y);
-    g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${b.dead ? 0.35 : 0.55})`);
-    ctx.strokeStyle = g; ctx.lineWidth = b.sn ? 6 : 4.5;
-    ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(b.x, b.y); ctx.stroke();
-    const g2 = ctx.createLinearGradient(sx0, sy0, b.x, b.y);
-    g2.addColorStop(0, 'rgba(255,250,235,0)'); g2.addColorStop(1, `rgba(255,250,235,${b.dead ? 0.5 : 0.95})`);
-    ctx.strokeStyle = g2; ctx.lineWidth = b.sn ? 1.8 : 1.3;
-    ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(b.x, b.y); ctx.stroke();
-  }
-  for (const e of enemies) {
-    if (e.dead || e.type !== 'sniper' || e.state !== 'combat' || !e.sees) continue;
-    const m = muzzle(e.x, e.y, e.a, e.T.gun, 1, e.T.art);
-    let ex = m.x + Math.cos(e.a) * 1400, ey = m.y + Math.sin(e.a) * 1400, best = 1;
-    for (const o of sightObs) { const tt = segRect(m.x, m.y, ex, ey, o); if (tt >= 0 && tt < best) best = tt; }
-    ex = m.x + (ex - m.x) * best; ey = m.y + (ey - m.y) * best;
-    ctx.strokeStyle = `rgba(255,40,30,${0.3 + e.charge * 0.5})`; ctx.lineWidth = 1 + e.charge * 1.6;
-    ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(ex, ey); ctx.stroke();
-    const dg = ctx.createRadialGradient(ex, ey, 0, ex, ey, 12); dg.addColorStop(0, 'rgba(255,60,50,.9)'); dg.addColorStop(1, 'rgba(255,60,50,0)');
-    ctx.fillStyle = dg; ctx.fillRect(ex - 12, ey - 12, 24, 24);
-  }
-  for (const l of lights) {
-    const k = l.life / l.max, r = l.r * 0.45;
-    const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
-    g.addColorStop(0, `rgba(${l.col},${l.a * k})`); g.addColorStop(1, `rgba(${l.col},0)`);
-    ctx.fillStyle = g; ctx.fillRect(l.x - r, l.y - r, r * 2, r * 2);
-  }
-  for (const p of particles) {
-    const k = p.life / p.max;
-    if (p.t === 'spark') {
-      ctx.strokeStyle = p.col; ctx.globalAlpha = k; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.025, p.y - p.vy * 0.025); ctx.stroke(); ctx.globalAlpha = 1;
-    } else if (p.t === 'fire') {
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-      g.addColorStop(0, `rgba(255,225,150,${k})`); g.addColorStop(0.5, `rgba(255,120,40,${k * 0.7})`); g.addColorStop(1, 'rgba(255,80,20,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill();
-    } else if (p.t === 'flash') {
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.scale(p.size, p.size);
-      const fg = ctx.createRadialGradient(4, 0, 0, 4, 0, 16); fg.addColorStop(0, `rgba(255,240,200,${k})`); fg.addColorStop(1, 'rgba(255,180,80,0)');
-      ctx.fillStyle = fg; ctx.fillRect(-12, -16, 32, 32);
-      ctx.fillStyle = `rgba(255,232,170,${k})`;
-      ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(24, 0); ctx.lineTo(0, 4); ctx.lineTo(4, 0); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(10, -10); ctx.lineTo(7, 0); ctx.lineTo(10, 10); ctx.closePath(); ctx.fill();
-      ctx.restore();
-    } else if (p.t === 'ring') {
-      ctx.strokeStyle = `rgba(255,220,170,${k * 0.6})`; ctx.lineWidth = 6 * k;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 - k) + 10, 0, TAU); ctx.stroke();
-    }
-  }
-  ctx.restore();
+  drawEmissive(t, inView, true);
 
   // 8. markers (unlit UI in world space)
   if (state !== 'menu') drawWorldMarkers(t, inView);
@@ -2750,7 +2824,7 @@ function frame(now) {
   const dt = Math.min(0.033, rawDt); last = now;
   // adaptive quality: drop to a cheaper light buffer if the device struggles
   if (rawDt < 0.5) fpsEma = lerp(fpsEma, rawDt, 0.05);
-  if (!lowQ && state === 'play') { slowT = fpsEma > 1 / 40 ? slowT + rawDt : 0; if (slowT > 3) { lowQ = true; LS = 0.33; sizeFx(); } }
+  if (!lowQ && state === 'play') { slowT = fpsEma > 1 / 40 ? slowT + rawDt : 0; if (slowT > 3) { lowQ = true; LS = 0.33; sizeFx(); if (window.__R3 && window.__R3.setLowQuality) window.__R3.setLowQuality(); } }
   if (state !== 'pause') updateWeather(dt);
   if (state === 'play') update(dt);
   else if (state === 'menu') {
@@ -2767,6 +2841,16 @@ if (document.fonts && document.fonts.load) {
   Promise.all([document.fonts.load("700 22px 'Chakra Petch'"), document.fonts.load("500 13px 'Barlow'")]).then(() => { if (state === 'menu') paintGround(); }).catch(() => {});
 }
 requestAnimationFrame(frame);
-window.__ko = { get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, obs, startGame, findPath, insideSolid };
+window.__G = {
+  get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, get cam() { return cam; },
+  get ZOOM() { return ZOOM; }, get crates() { return crates; }, get objectives() { return objectives; }, get pickups() { return pickups; },
+  get ext() { return ext; }, get lights() { return lights; }, get weather() { return weather; },
+  get groundDirty() { return groundDirty; }, set groundDirty(v) { groundDirty = v; },
+  ground, obs, trees, LAMPS, INTERIOR, buildings, WEAPONS, EXT, LZ_IN, MW, MH, M2W, IS_TOUCH,
+  on3DReady() { cv.classList.add('over3d'); paintGround(); },
+};
+window.__ko = { get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, obs, startGame, findPath, insideSolid, kill: e => killEnemy(e, 0.5) };
 })();
 </script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module" src="r3d.js"></script>

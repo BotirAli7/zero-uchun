@@ -42,10 +42,15 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
 | `Space` | Chetga sakrash |
 | `Esc` / `P` | Pauza |
 
-**Grafika:** askarlar 3D modeldan tepadan render qilingan (oyoq va tana alohida,
-qo'llar IK bilan qurolga qo'yilgan), yer/yo'l/pol teksturalari ambientCG (CC0).
-Mualliflar va litsenziyalar: `web/assets/CREDITS.txt`. Render vositasi:
-`tools/soldier_render/`.
+**Grafika (3D):** o'yin three.js'da real vaqtli 3D'da chiziladi (`web/r3d.js`):
+2.6 m balandlikdagi suvoqli devorlar, Poly Haven'ning CC0 3D modellari (mashina,
+beton to'siqlar, chiroq ustunlari, bochka, yashik, mebel), barg kartochkali
+daraxtlar, animatsiyali 3D askarlar (qurolni IK bilan ushlaydi, yiqilganda
+jasad qoladi), soya tashlaydigan fonar, ko'cha va xona chiroqlari.
+O'yin mantig'i 2D simulyatsiyada qoladi; WebGL ishlamasa, 2D renderer o'zi
+yoqiladi. 3D versiya HTTP orqali ochilishi kerak (masalan,
+`cd web && python3 -m http.server`, keyin `http://localhost:8000`).
+Mualliflar va litsenziyalar: `web/assets/CREDITS.txt`.
 
 Pastdagi Godot 3.5 loyihasi (`project.godot`, `scenes/`, `scripts/`) avvalgi
 prototip. U tarix sifatida saqlab qolindi.
