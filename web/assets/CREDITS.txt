@@ -18,3 +18,11 @@ Textures (web/assets/tex)
 
 2D fallback sprites (web/assets/*.png)
   Rendered from the same soldier model by tools/soldier_render.
+
+Sound effects (web/assets/sfx) - CC0 1.0
+  Gunshots (ar, lmg, sg, pt, smg, sniper): "The Free Firearm Sound Library" by Ben Jaszczak et al.
+  https://opengameart.org/content/the-free-firearm-sound-library
+  (AK-47 C_31P, AR-15 D_24P, Mossberg N_26P, Walther PPQ X_31P, PPSh P_16P, Mosin Nagant M_21P;
+  single shots cut, normalised and encoded to Ogg Vorbis).
+  Doors, footsteps, impacts, thunder, loot: "100 CC0 SFX #2"
+  https://opengameart.org/content/100-cc0-sfx-2

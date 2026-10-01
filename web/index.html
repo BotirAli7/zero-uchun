@@ -108,8 +108,8 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
       <span><kbd>R</kbd>Qayta o'qlash</span>
       <span><kbd>G</kbd>Granata (bosib turing)</span>
       <span><kbd>C</kbd>Cho'kish, jim yurish</span>
-      <span><kbd>F</kbd>Pichoq, orqadan jim</span>
-      <span><kbd>E</kbd>Olish / ochish</span>
+      <span><kbd>F</kbd>Pichoq / eshikni tepish</span>
+      <span><kbd>E</kbd>Olish, eshik ochish</span>
       <span><kbd>Q</kbd>Dori qutisi</span>
       <span><kbd>Space</kbd>Chetga sakrash</span>
       <span><kbd>Esc</kbd>Pauza</span>
@@ -221,10 +221,22 @@ function wallLine(x, y, len, dir, gaps) {
   for (const [off, gw] of gaps) { if (off > cur) seg(cur, off); cur = Math.max(cur, off + gw); }
   if (cur < len) seg(cur, len);
 }
+const DOOR_DEFS = [];
 function building(name, x, y, w, h, doors, inner, floor) {
   buildings.push({ name, x, y, w, h, floor });
   const g = { n: [], s: [], e: [], w: [] };
-  doors.forEach(d => g[d[0]].push([d[1], d[2] || 72]));
+  doors.forEach(d => {
+    const gw = d[2] || 72, side = d[0], off = d[1];
+    g[side].push([off, gw]);
+    if (gw > 90) return;                 // wide openings (garage) stay open
+    if (side === 'n' || side === 's') {
+      const yy = side === 'n' ? y : y + h - T;
+      DOOR_DEFS.push({ x: x + off, y: yy + T / 2 - 3, w: gw, h: 6, hx: x + off, hy: yy + T / 2, len: gw, ca: 0, oa: side === 'n' ? Math.PI / 2 : -Math.PI / 2 });
+    } else {
+      const xx = side === 'w' ? x : x + w - T;
+      DOOR_DEFS.push({ x: xx + T / 2 - 3, y: y + off, w: 6, h: gw, hx: xx + T / 2, hy: y + off, len: gw, ca: Math.PI / 2, oa: side === 'w' ? 0 : Math.PI });
+    }
+  });
   wallLine(x, y, w, 'h', g.n);
   wallLine(x, y + h - T, w, 'h', g.s);
   wallLine(x, y, h, 'v', g.w);
@@ -403,6 +415,46 @@ const grid = new Uint8Array(GW * GH);
     }
   }
 })();
+// doors: closed doors are solid, block sight, bullets and grenades
+const doors = DOOR_DEFS.map(d => Object.assign({}, d, { open: false, anim: 0, kick: false, o: { x: d.x, y: d.y, w: d.w, h: d.h, kind: 'door', sight: true, move: true, bullet: true } }));
+function resetDoors() {
+  for (const d of doors) {
+    d.open = false; d.anim = 0; d.kick = false;
+    if (!obs.includes(d.o)) { obs.push(d.o); sightObs.push(d.o); }
+  }
+}
+function doorBlocked(d) {
+  const r = 16, ents = [P].concat(enemies.filter(e => !e.dead));
+  return ents.some(e => e && e.x + r > d.x && e.x - r < d.x + d.w && e.y + r > d.y && e.y - r < d.y + d.h);
+}
+function setDoor(d, open, how) {
+  if (open === d.open) return false;
+  if (!open && doorBlocked(d)) return false;
+  d.open = open; d.kick = how === 'kick';
+  if (open) {
+    let i = obs.indexOf(d.o); if (i >= 0) obs.splice(i, 1);
+    i = sightObs.indexOf(d.o); if (i >= 0) sightObs.splice(i, 1);
+  } else { obs.push(d.o); sightObs.push(d.o); }
+  const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+  if (how === 'kick') {
+    sfx('kick', distVol(cx, cy) + 0.2); sfx('door_slam', distVol(cx, cy));
+    shake = Math.max(shake, 7); dust(cx, cy, 8, '150,140,120');
+    for (let k = 0; k < 6; k++) addP({ t: 'spark', x: cx, y: cy, vx: rand(-200, 200), vy: rand(-200, 200), life: 0.2, max: 0.2, col: '#c9a26a' });
+    makeNoise(cx, cy, 650);
+    // breach: anyone right behind the door is stunned for a moment
+    for (const e of enemies) if (!e.dead && dist(e.x, e.y, cx, cy) < 150) { e.reactT = Math.max(e.reactT, 1.2); e.flash = 0.12; e.stunT = 1.2; }
+    addFloat(cx, cy - 26, 'BREACH!', '#f0a23b');
+  } else sfx(open ? 'door_open' : 'door_close', distVol(cx, cy) * 0.9 + 0.05);
+  return true;
+}
+function updateDoors(dt) {
+  for (const d of doors) {
+    const target = d.open ? 1 : 0, sp = d.kick ? 9 : 3.2;
+    d.anim = d.anim < target ? Math.min(target, d.anim + dt * sp) : Math.max(target, d.anim - dt * sp);
+  }
+}
+function doorAngle(d) { return d.ca + (d.oa - d.ca) * (d.kick ? Math.min(1, d.anim * 1.08) : d.anim); }
+
 const gScore = new Float32Array(GW * GH), came = new Int32Array(GW * GH), stamp = new Uint32Array(GW * GH), closedS = new Uint32Array(GW * GH);
 let curStamp = 0;
 const heap = [], heapF = [];
@@ -1034,6 +1086,7 @@ function initAudio() {
     const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
     const wg = actx.createGain(); wg.gain.value = 0.045;
     wn.connect(lp); lp.connect(wg); wg.connect(master); wn.start();
+    loadSamples();
   } catch (e) { actx = null; }
 }
 const SND = {
@@ -1047,9 +1100,40 @@ const SND = {
   step: { f: 420, q: 0.7, dur: 0.05, thump: 70, vol: 0.1 },
   thunder: { f: 110, q: 0.3, dur: 2.6, thump: 32, vol: 0.9 },
 };
+// recorded CC0 samples (The Free Firearm Sound Library, 100 CC0 SFX #2); synth is the fallback
+const SAMPLE_FILES = { ar: 'ar', smg: 'smg', lmg: 'lmg', sg: 'sg', pt: 'pt', sniper: 'sniper', thunder: 'thunder_01',
+  door_open: 'door_01', door_close: 'door_03', door_slam: 'door_03', kick: 'wood_hit_02', ric: 'metal_hit_02',
+  step1: 'footstep_wet_01', step2: 'footstep_wet_02', step3: 'footstep_01', step4: 'footstep_02', loot: 'items_01', pick: 'switch_01', glass: 'glass_01', hit: 'hit_01' };
+const SAMPLES = {};
+let samplesLoading = false;
+function loadSamples() {
+  if (samplesLoading || !actx) return;
+  samplesLoading = true;
+  for (const [k, f] of Object.entries(SAMPLE_FILES)) {
+    fetch('assets/sfx/' + f + '.ogg').then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+      .then(b => new Promise((res, rej) => actx.decodeAudioData(b, res, rej))).then(buf => { SAMPLES[k] = buf; }).catch(() => {});
+  }
+}
+let stepAlt = 0;
+// play a recorded sample; far sounds are muffled with a low-pass
+function sfx(name, vol = 1, rate = 1) {
+  if (!actx || vol < 0.02) return false;
+  if (name === 'step') name = 'step' + (1 + (stepAlt++ % 2) + (P && insideBuilding(P.x, P.y) ? 2 : 0));
+  const buf = SAMPLES[name];
+  if (!buf) return false;
+  const t = actx.currentTime, src = actx.createBufferSource();
+  src.buffer = buf; src.playbackRate.value = rate * (0.95 + Math.random() * 0.1);
+  const g = actx.createGain(); g.gain.value = Math.min(1.4, vol);
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900 + 17000 * Math.min(1, vol);
+  src.connect(lp); lp.connect(g); g.connect(master); src.start(t);
+  return true;
+}
+function insideBuilding(x, y) { return buildings.some(b => x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h); }
 function sound(type, vol = 1) {
   if (!actx || soundsThisFrame > 6 || vol < 0.02) return;
   soundsThisFrame++;
+  if (SAMPLES[type] && type !== 'boom') { sfx(type, vol * (type === 'sniper' ? 1 : 0.8)); return; }
+  if (type === 'step' && sfx('step', vol * 0.6)) return;
   const s = SND[type], t = actx.currentTime;
   const src = actx.createBufferSource(); src.buffer = noiseBuf;
   src.playbackRate.value = 0.8 + Math.random() * 0.4;
@@ -1144,6 +1228,7 @@ function newGame() {
   };
   enemies = ENEMY_SPAWNS.map(s => makeEnemy(s[0], s[1], s[2]));
   bullets = []; particles = []; casings = []; grenades = []; pickups = []; floats = []; feed = []; lights = []; pings = []; dmgDirs = [];
+  resetDoors();
   crates = CRATE_POS.map(p => ({ x: p[0], y: p[1], opened: false }));
   objectives = OBJECTIVES_DEF.map(o => Object.assign({ taken: false }, o));
   ext = { active: false, hold: 0, need: 8, heliZ: 1 };
@@ -1490,6 +1575,15 @@ function updatePlayer(dt) {
     if (e.state !== 'combat' || behind) { tdBest = d; td = e; }
   }
   P.takedownTarget = td;
+  // nearest door within reach
+  let dt2 = null, dBest = 52;
+  for (const d of doors) { const dd = dist(P.x, P.y, d.x + d.w / 2, d.y + d.h / 2); if (dd < dBest) { dBest = dd; dt2 = d; } }
+  P.doorTarget = dt2;
+  if (pressed.has('KeyF') && !td && dt2 && !dt2.open && P.knifeCd <= 0) {
+    P.knifeCd = 0.6; P.knifeT = 0.32; P.reloadT = 0;
+    setDoor(dt2, true, 'kick');
+    pressed.delete('KeyF');
+  }
   if (pressed.has('KeyF') && P.knifeCd <= 0) {
     P.knifeCd = 0.55; P.knifeT = 0.32; P.reloadT = 0;
     if (td) {
@@ -1514,6 +1608,9 @@ function updatePlayer(dt) {
   for (const c of crates) if (!c.opened) { const d = dist(P.x, P.y, c.x, c.y); if (d < best) { best = d; target = c; } }
   if (target !== P.interactTarget) P.interactT = 0;
   P.interactTarget = target;
+  if (!target && P.doorTarget && pressed.has('KeyE')) {
+    if (!setDoor(P.doorTarget, !P.doorTarget.open, 'hand') && P.doorTarget.open) addFloat(P.x, P.y - 28, "YO'L TO'SIQ", '#e5484d');
+  }
   if (target && keys.has('KeyE')) {
     P.interactT += dt;
     const need = target.id ? 1.4 : 0.7;
@@ -1536,10 +1633,11 @@ function applyLoot(kind, x, y) {
   } else if (kind === 'med') { P.med++; addFloat(x, y - 20, '+DORI QUTISI', '#7ad89a'); }
   else if (kind === 'armor') { P.armor = 60; addFloat(x, y - 20, '+ZIRH', '#8fb7ff'); }
   else if (kind === 'gren') { P.gren++; addFloat(x, y - 20, '+GRANATA', '#f0a23b'); }
-  blip(780, 0.07, 0.07, 'triangle');
+  if (!sfx('pick', 0.5)) blip(780, 0.07, 0.07, 'triangle');
 }
 function openCrate(c) {
   c.opened = true;
+  sfx('loot', 0.7);
   const kinds = ['ammo', 'ammo', 'med', 'gren', 'armor'];
   const k1 = kinds[randi(0, kinds.length - 1)];
   applyLoot(k1, c.x, c.y);
@@ -1668,6 +1766,8 @@ function updateEnemy(e, dt) {
   }
   e.sees = sees;
   e.moving = false;
+  for (const d of doors) if (!d.open && Math.abs(e.x - (d.x + d.w / 2)) < 36 && Math.abs(e.y - (d.y + d.h / 2)) < 36 && e.state !== 'patrol' || (!d.open && e.state === 'patrol' && dist(e.x, e.y, d.x + d.w / 2, d.y + d.h / 2) < 30)) setDoor(d, true, 'hand');
+  if (e.stunT > 0) { e.stunT -= dt; e.a += Math.sin(e.stunT * 20) * dt * 2; return; }
   if (sees) {
     e.lastKnown = { x: P.x, y: P.y }; e.lostT = 0;
     if (e.state !== 'combat') {
@@ -1802,7 +1902,7 @@ function updateBullets(dt) {
         if (hit.kind === 'crate') { sparks(hx, hy, back, 3, '#b08a55'); dust(hx, hy, 2, '120,95,60'); }
         else if (hit.kind === 'sandbag') dust(hx, hy, 3, '140,125,90');
         else if (hit.kind === 'tree') dust(hx, hy, 2, '70,60,40');
-        else { sparks(hx, hy, back, 4); dust(hx, hy, 2, '130,130,120'); }
+        else { sparks(hx, hy, back, 4); dust(hx, hy, 2, '130,130,120'); if (Math.random() < 0.18) sfx('ric', distVol(hx, hy) * 0.35, 0.9 + Math.random() * 0.3); }
       } else if (kind === 'enemy') {
         damageEnemy(hit, b.dmg * fall, a, false);
         stats.hits++; hitMarker = 0.18;
@@ -1886,6 +1986,7 @@ function updateWeather(dt) {
 function update(dt) {
   gameTime += dt;
   pathBudget = 3;
+  updateDoors(dt);
   updatePlayer(dt);
   for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
   separateEnemies();
@@ -2122,6 +2223,19 @@ function drawEmissive(t, inView, bulbs) {
   ctx.restore();
 
 }
+function drawDoors2D(inView) {
+  for (const d of doors) {
+    if (!inView(d.hx, d.hy, 120)) continue;
+    const a = doorAngle(d);
+    ctx.save(); ctx.translate(d.hx, d.hy); ctx.rotate(a);
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(3, -1, d.len - 4, 8);
+    ctx.fillStyle = '#6a4b2c'; ctx.fillRect(2, -4, d.len - 4, 8);
+    ctx.fillStyle = 'rgba(255,220,170,.12)'; ctx.fillRect(2, -4, d.len - 4, 2);
+    ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1; ctx.strokeRect(2, -4, d.len - 4, 8);
+    ctx.fillStyle = '#c9b48a'; ctx.fillRect(d.len - 12, -2, 4, 4);
+    ctx.restore();
+  }
+}
 function use3D() { return !!(window.__R3 && window.__R3.ready); }
 function render2DOverlay(dt, t, vis, inView, worldT, vx, vy, vw, vh) {
   if (ext.active) {
@@ -2329,6 +2443,7 @@ function render(dt) {
   }
   solids.sort((a, b) => dist(b.x + b.w / 2, b.y + b.h / 2, cam.x, cam.y) - dist(a.x + a.w / 2, a.y + a.h / 2, cam.x, cam.y));
   drawSolids3D(ctx, solids, cam.x, cam.y);
+  drawDoors2D(inView);
   for (const L of LAMPS) {
     if (!inView(L[0], L[1], 80)) continue;
     const h = lampHead(L, cam.x, cam.y);
@@ -2437,6 +2552,23 @@ function drawWorldMarkers(t, inView) {
     ctx.fillStyle = 'rgba(8,11,10,.85)'; ctx.fillRect(tdT.x - tw / 2, tdT.y - 62, tw, 24);
     ctx.fillStyle = '#5ccfbf'; ctx.fillRect(tdT.x - tw / 2, tdT.y - 62, 3, 24);
     ctx.fillStyle = '#e8e4d6'; ctx.fillText(label, tdT.x, tdT.y - 49);
+  }
+  // door prompt
+  const dtg = P.doorTarget;
+  if (dtg && !P.interactTarget && !P.dead && !(P.takedownTarget && !P.takedownTarget.dead)) {
+    const touchUI = IS_TOUCH || touchUsed;
+    const parts = dtg.open ? [[touchUI ? 'OLISH' : 'E', 'yopish']] : [[touchUI ? 'OLISH' : 'E', 'ochish'], [touchUI ? 'PICHOQ' : 'F', 'tepib ochish']];
+    const cx = dtg.x + dtg.w / 2, y = dtg.y + dtg.h / 2 - 44;
+    ctx.font = "600 13px 'Chakra Petch', sans-serif";
+    const txt = parts.map(p => p[0] + ' ' + p[1]).join('   ');
+    const wTxt = ctx.measureText(txt).width + 24;
+    ctx.fillStyle = 'rgba(8,11,10,.85)'; ctx.fillRect(cx - wTxt / 2, y - 13, wTxt, 26);
+    let xx = cx - wTxt / 2 + 12; ctx.textAlign = 'left';
+    for (const [k, l] of parts) {
+      ctx.fillStyle = '#f0a23b'; ctx.fillText(k, xx, y + 1); xx += ctx.measureText(k + ' ').width;
+      ctx.fillStyle = '#e8e4d6'; ctx.fillText(l, xx, y + 1); xx += ctx.measureText(l + '   ').width;
+    }
+    ctx.textAlign = 'center';
   }
   // interaction prompt
   const it = P.interactTarget;
@@ -2552,8 +2684,8 @@ function drawRain() {
     ctx.fillStyle = `rgba(200,220,255,${f * 0.16})`; ctx.fillRect(0, 0, W, H);
   }
 }
-const TIPS_DESK = ["C: cho'king. Qadam tovushi chiqmaydi, dushman sizni kechroq sezadi.", "F: dushmanga orqadan yaqinlashib, jimgina yo'q qiling.", "G ni bosib turing: granata qayerga tushishini ko'rasiz.", "Fonar nurlari dushman qayerga qarayotganini ko'rsatadi."];
-const TIPS_TOUCH = ["CHO'KISH: qadam tovushi chiqmaydi, dushman kechroq sezadi.", "PICHOQ: dushmanga orqadan yaqinlashib, jimgina yo'q qiling.", "Fonar nurlari dushman qayerga qarayotganini ko'rsatadi."];
+const TIPS_DESK = ["F: yopiq eshikni tepib oching. Ichkaridagilar bir lahza dovdirab qoladi.", "C: cho'king. Qadam tovushi chiqmaydi, dushman sizni kechroq sezadi.", "F: dushmanga orqadan yaqinlashib, jimgina yo'q qiling.", "G ni bosib turing: granata qayerga tushishini ko'rasiz.", "Fonar nurlari dushman qayerga qarayotganini ko'rsatadi."];
+const TIPS_TOUCH = ["PICHOQ: yopiq eshikni tepib oching. Ichkaridagilar dovdirab qoladi.", "CHO'KISH: qadam tovushi chiqmaydi, dushman kechroq sezadi.", "PICHOQ: dushmanga orqadan yaqinlashib, jimgina yo'q qiling.", "Fonar nurlari dushman qayerga qarayotganini ko'rsatadi."];
 function drawHUD(t) {
   const touch = IS_TOUCH || touchUsed;
   const pad = 16;
@@ -2846,7 +2978,7 @@ window.__G = {
   get ZOOM() { return ZOOM; }, get crates() { return crates; }, get objectives() { return objectives; }, get pickups() { return pickups; },
   get ext() { return ext; }, get lights() { return lights; }, get weather() { return weather; },
   get groundDirty() { return groundDirty; }, set groundDirty(v) { groundDirty = v; },
-  ground, obs, trees, LAMPS, INTERIOR, buildings, WEAPONS, EXT, LZ_IN, MW, MH, M2W, IS_TOUCH,
+  doors, doorAngle, get SAMPLES() { return SAMPLES; }, ground, obs, trees, LAMPS, INTERIOR, buildings, WEAPONS, EXT, LZ_IN, MW, MH, M2W, IS_TOUCH,
   on3DReady() { cv.classList.add('over3d'); paintGround(); },
 };
 window.__ko = { get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, obs, startGame, findPath, insideSolid, kill: e => killEnemy(e, 0.5) };

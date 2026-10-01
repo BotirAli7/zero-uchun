@@ -22,6 +22,10 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
 - Dushmanlar sizni panadan chiqarish uchun granata otadi va granatadan qochadi
 - Granatani bosib turganda traektoriya va portlash radiusi ko'rinadi
 - Yomg'ir va chaqmoq; oxirida ball va S/A/B/C reyting
+- Eshiklar: `E` bilan ochish/yopish, `F` bilan tepib ochish (ichkaridagilar
+  bir lahza dovdirab qoladi); yopiq eshik ko'rish, o'q va granatani to'sadi,
+  dushmanlar ham eshik ochadi
+- Haqiqiy qurol, eshik, qadam va momaqaldiroq ovozlari (CC0 yozuvlar)
 - Grafika: dinamik yoritish (o'yinchi fonari, ko'cha chiroqlari, xona
   chiroqlari, otishma chaqnashi), 2.5D balandlikdagi devorlar, konteynerlar
   va mashinalar, soyali askar spraytlari, mebel, ko'lmaklar, piyodalar
@@ -36,8 +40,8 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
 | `R` | Qayta o'qlash |
 | `G` (bosib turish) | Granata: mo'ljal ko'rinadi, qo'yib yuborganda otiladi |
 | `C` | Cho'kish / turish |
-| `F` | Pichoq, orqadan jimgina yo'q qilish |
-| `E` (bosib turish) | Yukni olish, qutini ochish |
+| `F` | Pichoq, orqadan jimgina yo'q qilish; yopiq eshikni tepib ochish |
+| `E` | Yukni olish, qutini ochish (bosib turish), eshikni ochish/yopish |
 | `Q` | Dori qutisi |
 | `Space` | Chetga sakrash |
 | `Esc` / `P` | Pauza |

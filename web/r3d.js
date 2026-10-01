@@ -24,7 +24,7 @@ let renderer, scene, camera, groundTex, M;
 const lib = {};           // model name -> { scene, size, min }
 const units = new Map();  // game entity -> Unit
 const trees3 = [];
-let crate3 = [], obj3 = [], pick3 = [];
+let crate3 = [], obj3 = [], pick3 = [], doors3 = [];
 let L = {};               // lights
 
 // ───────────────────────── boot ─────────────────────────
@@ -186,6 +186,25 @@ function buildWorld(tex) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(o.w / M + 0.01, 0.02, o.h / M + 0.01),
       new THREE.MeshStandardMaterial({ color: new THREE.Color(o.tint), roughness: 0.6, metalness: 0.3, transparent: true, opacity: 0.45 }));
     m.position.set((o.x + o.w / 2) / M, 2.56, (o.y + o.h / 2) / M); scene.add(m);
+  }
+
+  // doors: hinged slabs driven by the simulation's door angle
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x5e4128, roughness: 0.7 });
+  const knobMat = new THREE.MeshStandardMaterial({ color: 0xb8a37a, roughness: 0.3, metalness: 0.9 });
+  for (const d of G.doors) {
+    const g = new THREE.Group(), L2 = d.len / M - 0.06;
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(L2, 2.15, 0.07), doorMat);
+    slab.position.set(L2 / 2 + 0.03, 1.075, 0); slab.castShadow = true; slab.receiveShadow = true; g.add(slab);
+    for (const k of [0.05, -0.05]) { const kn = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), knobMat); kn.position.set(L2 - 0.08, 1.0, k); g.add(kn); }
+    g.position.set(d.hx / M, 0, d.hy / M);
+    scene.add(g); doors3.push({ d, g });
+  }
+  // lintels above every door so walls read as continuous
+  for (const d of G.doors) {
+    const horiz = Math.abs(Math.sin(d.ca)) < 0.5;
+    const lw = horiz ? d.len / M : 16 / M, ld = horiz ? 16 / M : d.len / M;
+    const lin = new THREE.Mesh(new THREE.BoxGeometry(lw, 0.42, ld), new THREE.MeshStandardMaterial({ color: 0x8e8a80, roughness: 0.95 }));
+    lin.position.set((d.x + d.w / 2) / M, WALL_H - 0.21, (d.y + d.h / 2) / M); lin.castShadow = true; scene.add(lin);
   }
 
   // props
@@ -503,6 +522,7 @@ R3.render = function (dt, sx, sy, vis) {
   }
   for (const [ent, u] of units) if (!seen.has(ent)) { scene.remove(u.yaw); for (const w of Object.values(u.weapons)) scene.remove(w); units.delete(ent); }
 
+  for (const { d, g } of doors3) g.rotation.y = -G.doorAngle(d);
   // props state
   for (const c of crate3) if (c.g) c.g.rotation.x = c.c.opened ? 0.0 : 0, c.g.visible = true, c.c.opened && (c.g.position.y = -0.05);
   for (const ob of obj3) {
