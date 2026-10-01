@@ -4,10 +4,19 @@
 uslubidagi tepadan ko'rinadigan taktik shuter. Hech narsa o'rnatish shart emas:
 faylni brauzerda oching. Telefonda sensorli boshqaruv avtomatik yoqiladi.
 
-**Vazifa:** Dust Lantern sektoridan uchta yukni olib chiqish (QUVVAT bloki,
-METALL yuki, TEXNIKA diski), kulbadagi garovdagi elektr ustasi Azizni ozod
-qilish va u bilan birga EVAK maydonchasida 8 soniya turish. Xaritada 4 ta
-yashirin razvedka hujjati bor (qo'shimcha ball).
+**Kampaniya (3 missiya, ketma-ket ochiladi):**
+1. **Dust Lantern** — shahar ko'chalari: uchta yukni olish, garovdagi Azizni
+   qutqarish va u bilan evakuatsiya.
+2. **Port Kestrel** — tumanli tungi port: konteyner labirinti, uchta yoqilg'i
+   rezervuariga portlovchi o'rnatish (7 soniyali taymer), iskaladagi vertolyot.
+3. **Black Grid** — elektr podstansiyasi: uchta releni yoqish, so'ng boshqaruv
+   binosini hujum to'lqinlariga qarshi 50 soniya ushlab turish (ta'minot
+   tashlanadi), keyin evakuatsiya.
+
+Har bir missiyada 4 ta yashirin razvedka hujjati bor. Har bir missiya uchun eng
+yaxshi reyting, vaqt va ball saqlanadi. Missiyalar `web/js/missions.js` da
+ma'lumot sifatida yozilgan; yangi xarita qo'shish uchun kod o'zgartirish shart
+emas. Sinov vositalari: `tools/qa/`.
 
 **Asosiy imkoniyatlar:**
 - Ko'rish maydoni (fog of war): devor orqasidagi dushmanlar ko'rinmaydi

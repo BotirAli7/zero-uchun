@@ -53,6 +53,14 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
 .result-head{display:flex;flex-direction:column;gap:10px;min-width:0}
 .rank{font:700 clamp(72px,16vw,112px)/.85 var(--display);color:var(--accent);min-width:1ch;text-align:center}
 .rank.s{color:var(--friend)}.rank.none{color:var(--muted)}
+.missions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mcard{display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px 12px;background:transparent;border:1px solid var(--line);color:var(--ink);cursor:pointer;min-width:0}
+.mcard b{font:700 15px var(--display);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcard span{font:600 10px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.mcard[aria-checked="true"]{border-color:var(--accent);background:rgba(240,162,59,.12)}
+.mcard:disabled{opacity:.4;cursor:not-allowed}
+.go.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+@media (max-width:480px){.missions{grid-template-columns:1fr}}
 .settings{display:grid;grid-template-columns:auto 1fr;gap:12px 16px;align-items:center}
 .settings input[type=range]{width:100%;accent-color:var(--accent)}
 .note{font:500 13px/1.45 var(--body);color:var(--muted);margin:0}
@@ -83,16 +91,11 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
 
 <section class="screen" id="menu">
   <div class="panel">
-    <div class="eyebrow">Kestrel shahri · Dust Lantern sektori · 19:40</div>
+    <div class="eyebrow" id="mSector"></div>
     <h1>KESTREL<br><span>OPS</span></h1>
-    <p class="lede">Shahar qorong'ilikka cho'kdi. Uchta muhim yukni qo'lga kiriting, qo'riqchilardan o'ting va vertolyot maydonchasiga yeting.</p>
-    <ul class="brief">
-      <li><b class="q">QUVVAT</b><span>Generator binosidagi energiya bloki, shimoli-sharq</span></li>
-      <li><b class="m">METALL</b><span>Pochta omboridagi metall yuki, shimoli-g'arb</span></li>
-      <li><b class="t">TEXNIKA</b><span>Shtab binosidagi ma'lumot diski, janubi-sharq</span></li>
-      <li><b class="q">AZIZ</b><span>Kulbadagi garovdagi elektr ustasini ozod qiling va tirik olib chiqing</span></li>
-      <li><b>EVAK</b><span>Yuklar va Aziz bilan shimoli-sharqdagi maydonchada 8 soniya turing</span></li>
-    </ul>
+    <div class="missions" id="missionList" role="radiogroup" aria-label="Missiya"></div>
+    <p class="lede" id="mLede"></p>
+    <ul class="brief" id="mBrief"></ul>
     <div style="display:flex;flex-direction:column;gap:8px">
       <span class="label" id="diffLabel">Qiyinlik</span>
       <div class="seg" role="group" aria-labelledby="diffLabel">
@@ -159,11 +162,14 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
     </div>
     <p class="lede" id="endText"></p>
     <div class="stats" id="endStats"></div>
+    <button type="button" class="go" id="nextBtn" hidden>Keyingi missiya</button>
     <button type="button" class="go" id="againBtn">Qayta boshlash</button>
+    <button type="button" class="go ghost" id="endMenuBtn">Missiyalar</button>
     <p class="note" id="endBest"></p>
   </div>
 </section>
 
+<script src="js/missions.js"></script>
 <script>
 (() => {
 'use strict';
@@ -230,7 +236,7 @@ const obs = [];        // all solid rects
 const buildings = [];
 const trees = [];
 function addRect(x, y, w, h, kind, extra) {
-  const lowCover = kind === 'crate' || kind === 'sandbag' || kind === 'tree' || kind === 'furniture' || kind === 'pole';
+  const lowCover = kind === 'crate' || kind === 'sandbag' || kind === 'tree' || kind === 'furniture' || kind === 'pole' || kind === 'water';
   const o = Object.assign({ x, y, w, h, kind, sight: !lowCover, move: true, bullet: true }, extra || {});
   obs.push(o); return o;
 }
@@ -264,59 +270,12 @@ function building(name, x, y, w, h, doors, inner, floor) {
   (inner || []).forEach(r => addRect(x + r[0], y + r[1], r[2], r[3], r[4] || 'wall'));
 }
 
-// border
-addRect(-60, -60, MW + 120, 60, 'border');
-addRect(-60, MH, MW + 120, 60, 'border');
-addRect(-60, 0, 60, MH, 'border');
-addRect(MW, 0, 60, MH, 'border');
-
-const ROADS = [{ x: 0, y: 900, w: MW, h: 120, dir: 'h' }, { x: 1300, y: 0, w: 120, h: MH, dir: 'v' }];
-
-building('Pochta ombori', 160, 160, 560, 400, [['s', 100, 80], ['e', 240]], [[360, 0, T, 250]], 'concrete');
-building('Kazarma', 860, 120, 320, 560, [['w', 420], ['s', 120]], [[0, 280, 200, T]], 'wood');
-building('Generator', 1560, 180, 460, 400, [['w', 260], ['s', 320, 80]], [[0, 170, 260, T], [330, 40, 90, 70, 'machine']], 'concrete');
-building('Kulba', 2300, 560, 240, 200, [['w', 70]], [], 'wood');
-building('Ombor', 260, 1140, 460, 300, [['n', 80], ['e', 120]], [], 'concrete');
-building('Garaj', 820, 1520, 340, 280, [['n', 110, 120]], [], 'garage');
-building('Shtab', 1620, 1180, 620, 500, [['n', 90], ['w', 340], ['e', 200]], [[300, 0, T, 200], [300, 200, 220, T], [180, 300, T, 200]], 'tile');
-
-// vehicles & containers (block sight)
-addRect(560, 930, 190, 64, 'vehicle', { model: 'truck', a: 0 });
-addRect(2000, 945, 110, 52, 'vehicle', { model: 'car', tint: '#5b6a70' });
-addRect(1325, 560, 54, 110, 'vehicle', { model: 'carv', tint: '#7a3b2e' });
-addRect(2330, 1760, 160, 84, 'vehicle', { model: 'apc' });
-addRect(560, 1620, 104, 52, 'vehicle', { model: 'wreck' });
-addRect(2120, 150, 170, 56, 'container', { tint: '#6b3a2a' });
-addRect(2120, 260, 56, 170, 'container', { tint: '#2f4a5a' });
-addRect(2500, 1250, 56, 170, 'container', { tint: '#3d5a3a' });
-addRect(2560, 1500, 170, 56, 'container', { tint: '#6b3a2a' });
-
-// sandbags (low cover)
-[[1640, 1110, 140, 24], [2000, 1110, 140, 24], [1440, 640, 24, 120], [2380, 380, 24, 110], [420, 780, 130, 24], [1100, 1250, 24, 120], [140, 1560, 120, 24]]
-  .forEach(s => addRect(s[0], s[1], s[2], s[3], 'sandbag'));
-// furniture (low cover, baked into the floor art)
-[['bed', 1120, 150, 44, 80], ['bed', 1120, 250, 44, 80], ['bed', 876, 430, 44, 80],
- ['shelf', 200, 180, 120, 26], ['shelf', 360, 180, 120, 26], ['barrel', 190, 480, 28, 28],
- ['desk', 1590, 200, 70, 34], ['barrel', 1580, 520, 28, 28], ['barrel', 1612, 520, 28, 28],
- ['desk', 1650, 1330, 60, 34], ['desk', 2150, 1210, 60, 34], ['shelf', 1640, 1630, 120, 30],
- ['shelf', 280, 1380, 140, 28], ['shelf', 460, 1380, 140, 28], ['barrel', 660, 1160, 28, 28], ['barrel', 660, 1192, 28, 28],
- ['bench', 840, 1740, 120, 34], ['barrel', 1110, 1540, 28, 28], ['barrel', 1110, 1572, 28, 28],
- ['bed', 2480, 580, 44, 80], ['table', 2330, 580, 50, 34]]
-  .forEach(f => addRect(f[1], f[2], f[3], f[4], 'furniture', { model: f[0] }));
-// street lamps (thin poles)
-const LAMPS = [[1290, 888], [1432, 1032], [720, 882], [2000, 1035], [1600, 1150], [430, 1108], [2250, 118], [1120, 1492], [2580, 1200], [200, 1032], [2700, 888]];
-LAMPS.forEach(l => addRect(l[0] - 5, l[1] - 5, 10, 10, 'pole'));
-// crates (low cover)
-[[250, 700], [290, 700], [250, 740], [1180, 820], [1220, 820], [1480, 1200], [1480, 1240], [1520, 1240], [2300, 1100], [2340, 1100],
- [700, 1700], [740, 1700], [700, 1740], [1560, 1820], [1600, 1820], [2650, 1880], [2690, 1880], [2690, 1840], [2650, 620], [2690, 620], [1040, 1060]]
-  .forEach(p => addRect(p[0], p[1], 40, 40, 'crate'));
-
-const LZ_IN = { x: 200, y: 1800, r: 110 };
-const EXT = { x: 2580, y: 220, r: 115 };
-
-// trees (seeded, avoiding everything)
-(function placeTrees() {
-  const R = mulberry32(42);
+const MISSIONS = window.KO_MISSIONS;
+let missionIdx = 0, M = MISSIONS[0];
+const ROADS = [], LAMPS = [], WATER = [], sightObs = [], tallObs = [];
+const LZ_IN = { x: 0, y: 0, r: 110 }, EXT = { x: 0, y: 0, r: 110 };
+function placeTrees(seed, count) {
+  const R = mulberry32(seed);
   const blockedArea = (x, y, r) => {
     if (x < 60 || y < 60 || x > MW - 60 || y > MH - 60) return true;
     for (const rd of ROADS) if (x + r > rd.x - 20 && x - r < rd.x + rd.w + 20 && y + r > rd.y - 20 && y - r < rd.y + rd.h + 20) return true;
@@ -324,21 +283,50 @@ const EXT = { x: 2580, y: 220, r: 115 };
     for (const o of obs) if (o.kind !== 'border' && x + 30 > o.x - 20 && x - 30 < o.x + o.w + 20 && y + 30 > o.y - 20 && y - 30 < o.y + o.h + 20) return true;
     if (dist(x, y, LZ_IN.x, LZ_IN.y) < LZ_IN.r + r) return true;
     if (dist(x, y, EXT.x, EXT.y) < EXT.r + r + 30) return true;
+    if (M.hold && dist(x, y, M.hold.x, M.hold.y) < M.hold.r) return true;
+    const spots = [].concat(M.crates, M.intel, M.objectives.map(o => [o.x, o.y]), M.hostage ? [[M.hostage.x, M.hostage.y]] : [], ...M.enemies.map(e => e[1]));
+    for (const q of spots) if (dist(x, y, q[0], q[1]) < r + 40) return true;
     for (const t of trees) if (dist(x, y, t.x, t.y) < t.r + r - 10) return true;
     return false;
   };
   let tries = 0;
-  while (trees.length < 46 && tries < 4000) {
+  while (trees.length < count && tries < 4000) {
     tries++;
     const x = R() * MW, y = R() * MH, r = 38 + R() * 30;
     if (blockedArea(x, y, r * 0.7)) continue;
     trees.push({ x, y, r, v: Math.floor(R() * 4), rot: R() * TAU, a: 1 });
   }
   trees.forEach(t => addRect(t.x - 8, t.y - 8, 16, 16, 'tree'));
-})();
-
-const sightObs = obs.filter(o => o.sight);
-const tallObs = obs.filter(o => o.kind === 'wall' || o.kind === 'border' || o.kind === 'vehicle' || o.kind === 'container' || o.kind === 'machine');
+}
+// Build the static world of a mission: geometry, nav grid, doors, lights, minimap.
+function buildWorld(m) {
+  M = m;
+  for (const a of [obs, buildings, trees, DOOR_DEFS, ROADS, LAMPS, WATER, sightObs, tallObs]) a.length = 0;
+  Object.assign(LZ_IN, m.lzIn); Object.assign(EXT, m.ext);
+  addRect(-60, -60, MW + 120, 60, 'border'); addRect(-60, MH, MW + 120, 60, 'border');
+  addRect(-60, 0, 60, MH, 'border'); addRect(MW, 0, 60, MH, 'border');
+  m.roads.forEach(r => ROADS.push(Object.assign({}, r)));
+  (m.water || []).forEach(w => { WATER.push({ x: w[0], y: w[1], w: w[2], h: w[3] }); addRect(w[0], w[1], w[2], w[3], 'water', { sight: false, bullet: false }); });
+  m.buildings.forEach(b => building(...b));
+  (m.vehicles || []).forEach(v => addRect(v[0], v[1], v[2], v[3], 'vehicle', { model: v[4], tint: v[5] }));
+  (m.containers || []).forEach(c => addRect(c[0], c[1], c[2], c[3], 'container', { tint: c[4] }));
+  (m.machines || []).forEach(c => addRect(c[0], c[1], c[2], c[3], 'machine', { model: c[4] }));
+  (m.sandbags || []).forEach(sb => addRect(sb[0], sb[1], sb[2], sb[3], 'sandbag'));
+  (m.furniture || []).forEach(f => addRect(f[1], f[2], f[3], f[4], 'furniture', { model: f[0] }));
+  (m.lamps || []).forEach(l => { LAMPS.push(l); addRect(l[0] - 5, l[1] - 5, 10, 10, 'pole'); });
+  (m.cover || []).forEach(c => addRect(c[0], c[1], 40, 40, 'crate'));
+  placeTrees(m.trees.seed, m.trees.count);
+  for (const o of obs) {
+    if (o.sight) sightObs.push(o);
+    if (o.kind === 'wall' || o.kind === 'border' || o.kind === 'vehicle' || o.kind === 'container' || o.kind === 'machine') tallObs.push(o);
+  }
+  buildGrid();
+  doors.length = 0;
+  DOOR_DEFS.forEach(d => doors.push(Object.assign({}, d, { open: false, anim: 0, kick: false, o: { x: d.x, y: d.y, w: d.w, h: d.h, kind: 'door', sight: true, move: true, bullet: true } })));
+  rebuildInterior();
+  paintMini();
+  weatherForMission();
+}
 
 // ───────────────────────── geometry queries ─────────────────────────
 function losBlocked(ax, ay, bx, by) {
@@ -424,7 +412,8 @@ function visPolygon(px, py, R) {
 // ───────────────────────── pathfinding (A*, 20px grid) ─────────────────────────
 const CS = 20, GW = Math.ceil(MW / CS), GH = Math.ceil(MH / CS);
 const grid = new Uint8Array(GW * GH);
-(function buildGrid() {
+function buildGrid() {
+  grid.fill(0);
   const pad = 15;
   for (const o of obs) {
     const x0 = Math.max(0, Math.floor((o.x - pad) / CS)), x1 = Math.min(GW - 1, Math.floor((o.x + o.w + pad) / CS));
@@ -434,9 +423,9 @@ const grid = new Uint8Array(GW * GH);
       if (cx > o.x - pad && cx < o.x + o.w + pad && cy > o.y - pad && cy < o.y + o.h + pad) grid[gy * GW + gx] = 1;
     }
   }
-})();
+}
 // doors: closed doors are solid, block sight, bullets and grenades
-const doors = DOOR_DEFS.map(d => Object.assign({}, d, { open: false, anim: 0, kick: false, o: { x: d.x, y: d.y, w: d.w, h: d.h, kind: 'door', sight: true, move: true, bullet: true } }));
+const doors = [];
 function resetDoors() {
   for (const d of doors) {
     d.open = false; d.anim = 0; d.kick = false;
@@ -560,11 +549,20 @@ function paintGround() {
   groundDirty = true;
   const c = gctx, R = mulberry32(7);
   const tx = texReady;
-  c.fillStyle = tx ? texFill(c, 'grass', 0.45) : '#434835'; c.fillRect(0, 0, MW, MH);
-  if (tx) {
-    // worn earth patches over the grass, soft-edged
-    const dirt = texFill(c, 'dirt', 0.5);
-    for (let i = 0; i < 70; i++) {
+  const theme = M.theme.ground, baseTex = theme === 'concrete' ? 'concrete' : theme === 'dirt' ? 'dirt' : 'grass';
+  c.fillStyle = tx ? texFill(c, baseTex, theme === 'concrete' ? 0.35 : 0.45) : theme === 'concrete' ? '#4a4c48' : theme === 'dirt' ? '#4d4636' : '#434835';
+  c.fillRect(0, 0, MW, MH);
+  if (tx && theme === 'concrete') {
+    c.fillStyle = 'rgba(30,32,30,.45)'; c.fillRect(0, 0, MW, MH);
+    c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 2;
+    for (let x = 0; x < MW; x += 160) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, MH); c.stroke(); }
+    for (let y = 0; y < MH; y += 160) { c.beginPath(); c.moveTo(0, y); c.lineTo(MW, y); c.stroke(); }
+    for (let i = 0; i < 90; i++) { const x = R() * MW, y = R() * MH, r = 20 + R() * 70; const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(8,8,6,.35)'); g.addColorStop(1, 'rgba(8,8,6,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+  }
+  if (tx && theme !== 'concrete') {
+    // soft-edged patches of the second ground texture
+    const dirt = texFill(c, theme === 'dirt' ? 'grass' : 'dirt', 0.5);
+    for (let i = 0; i < (theme === 'dirt' ? 45 : 70); i++) {
       const x = R() * MW, y = R() * MH, r = 90 + R() * 260;
       const mc = document.createElement('canvas'); mc.width = mc.height = Math.ceil(r * 2);
       const m = mc.getContext('2d');
@@ -609,7 +607,7 @@ function paintGround() {
   c.restore();
   // dirt tracks
   c.strokeStyle = 'rgba(105,92,66,.35)'; c.lineWidth = 34;
-  [[[300, 560], [300, 800], [520, 880]], [[1000, 680], [1060, 840], [1180, 900]], [[200, 1690], [380, 1500], [376, 1440]], [[1960, 1680], [2050, 1820], [2300, 1880]], [[2420, 760], [2440, 860]]].forEach(p => {
+  (M.tracks || []).forEach(p => {
     c.beginPath(); c.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) c.lineTo(p[i][0], p[i][1]); c.stroke();
   });
   // roads
@@ -622,25 +620,39 @@ function paintGround() {
     if (tx) { c.fillStyle = 'rgba(10,12,14,.35)'; c.fillRect(rd.x, rd.y, rd.w, rd.h); }
     else for (let i = 0; i < rd.w * rd.h / 70; i++) { c.fillStyle = R() < 0.5 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.035)'; c.fillRect(rd.x + R() * rd.w, rd.y + R() * rd.h, 1.5, 1.5); }
   }
+  // centre lines (broken at junctions) and edge lines
+  const hs = ROADS.filter(r => r.dir === 'h'), vs = ROADS.filter(r => r.dir === 'v');
   c.setLineDash([34, 30]); c.strokeStyle = 'rgba(201,166,64,.6)'; c.lineWidth = 4;
-  c.beginPath(); c.moveTo(0, 960); c.lineTo(1290, 960); c.moveTo(1430, 960); c.lineTo(MW, 960);
-  c.moveTo(1360, 0); c.lineTo(1360, 890); c.moveTo(1360, 1030); c.lineTo(1360, MH); c.stroke();
-  c.setLineDash([]);
+  c.beginPath();
+  for (const rd of hs) {
+    const cy = rd.y + rd.h / 2, cuts = vs.filter(v => v.y <= cy && v.y + v.h >= cy).map(v => [v.x - 10, v.x + v.w + 10]).sort((a, b) => a[0] - b[0]);
+    let x0 = rd.x; for (const [a, b] of cuts) { if (a > x0) { c.moveTo(x0, cy); c.lineTo(a, cy); } x0 = Math.max(x0, b); }
+    if (x0 < rd.x + rd.w) { c.moveTo(x0, cy); c.lineTo(rd.x + rd.w, cy); }
+  }
+  for (const rd of vs) {
+    const cx = rd.x + rd.w / 2, cuts = hs.filter(h => h.x <= cx && h.x + h.w >= cx).map(h => [h.y - 10, h.y + h.h + 10]).sort((a, b) => a[0] - b[0]);
+    let y0 = rd.y; for (const [a, b] of cuts) { if (a > y0) { c.moveTo(cx, y0); c.lineTo(cx, a); } y0 = Math.max(y0, b); }
+    if (y0 < rd.y + rd.h) { c.moveTo(cx, y0); c.lineTo(cx, rd.y + rd.h); }
+  }
+  c.stroke(); c.setLineDash([]);
   c.strokeStyle = 'rgba(220,220,200,.22)'; c.lineWidth = 2;
-  c.strokeRect(-2, 906, MW + 4, 108); c.strokeRect(1306, -2, 108, MH + 4);
+  for (const rd of ROADS) c.strokeRect(rd.x + (rd.dir === 'v' ? 6 : -2), rd.y + (rd.dir === 'h' ? 6 : -2), rd.w - (rd.dir === 'v' ? 12 : -4), rd.h - (rd.dir === 'h' ? 12 : -4));
   // cracks
   c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1;
   for (let i = 0; i < 70; i++) {
-    const rd = ROADS[i % 2]; let x = rd.x + R() * rd.w, y = rd.y + R() * rd.h;
+    const rd = ROADS[i % ROADS.length]; let x = rd.x + R() * rd.w, y = rd.y + R() * rd.h;
     c.beginPath(); c.moveTo(x, y);
     for (let k = 0; k < 5; k++) { x += (R() - 0.5) * 26; y += (R() - 0.5) * 26; c.lineTo(x, y); }
     c.stroke();
   }
   // crosswalks, stop lines, manholes
   c.fillStyle = 'rgba(225,225,210,.42)';
-  for (let y = 912; y < 1010; y += 17) { c.fillRect(1238, y, 50, 9); c.fillRect(1432, y, 50, 9); }
-  for (let x = 1312; x < 1410; x += 17) { c.fillRect(x, 838, 9, 50); c.fillRect(x, 1032, 9, 50); }
-  [[880, 960], [1360, 420], [1360, 1500], [2240, 940], [1900, 990]].forEach(([x, y]) => {
+  for (const h of hs) for (const v of vs) {
+    if (v.x + v.w < h.x || v.x > h.x + h.w || h.y + h.h < v.y || h.y > v.y + v.h) continue;
+    for (let y = h.y + 12; y < h.y + h.h - 10; y += 17) { if (v.x - 62 > h.x) c.fillRect(v.x - 62, y, 50, 9); if (v.x + v.w + 62 < h.x + h.w) c.fillRect(v.x + v.w + 12, y, 50, 9); }
+    for (let x = v.x + 12; x < v.x + v.w - 10; x += 17) { if (h.y - 62 > v.y) c.fillRect(x, h.y - 62, 9, 50); if (h.y + h.h + 62 < v.y + v.h) c.fillRect(x, h.y + h.h + 12, 9, 50); }
+  }
+  (M.manholes || []).forEach(([x, y]) => {
     c.fillStyle = '#1d1f1f'; c.beginPath(); c.arc(x, y, 15, 0, TAU); c.fill();
     c.strokeStyle = 'rgba(160,160,150,.35)'; c.lineWidth = 2; c.stroke();
     c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1;
@@ -650,7 +662,7 @@ function paintGround() {
   puddles.length = 0;
   for (let i = 0; i < 70; i++) {
     let x, y;
-    if (i % 2 === 0) { const rd = ROADS[i % 4 === 0 ? 0 : 1]; x = rd.x + R() * rd.w; y = rd.y + R() * rd.h; }
+    if (i % 2 === 0) { const rd = ROADS[(i >> 1) % ROADS.length]; x = rd.x + R() * rd.w; y = rd.y + R() * rd.h; }
     else { x = R() * MW; y = R() * MH; if (buildings.some(b => x > b.x - 20 && x < b.x + b.w + 20 && y > b.y - 20 && y < b.y + b.h + 20)) continue; }
     const rx = 16 + R() * 46, ry = rx * (0.45 + R() * 0.35), rot = R() * Math.PI;
     puddles.push({ x, y, rx, ry, rot });
@@ -716,6 +728,20 @@ function paintGround() {
     c.save(); c.font = "700 22px 'Chakra Petch', sans-serif"; c.fillStyle = 'rgba(232,228,214,.08)'; c.textAlign = 'center';
     c.fillText(b.name.toUpperCase(), b.x + b.w / 2, b.y + b.h - 34); c.restore();
   }
+  // sea
+  for (const w of WATER) {
+    const g = c.createLinearGradient(w.x, 0, w.x + w.w, 0); g.addColorStop(0, '#0f1d26'); g.addColorStop(1, '#081118');
+    c.fillStyle = g; c.fillRect(w.x, w.y, w.w, w.h);
+    c.strokeStyle = 'rgba(150,180,200,.08)'; c.lineWidth = 1.5;
+    for (let i = 0; i < w.w * w.h / 2500; i++) { const x = w.x + R() * w.w, y = w.y + R() * w.h, l = 8 + R() * 22; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + l / 2, y - 3, x + l, y); c.stroke(); }
+  }
+  for (const w of WATER) {   // quay edges
+    c.fillStyle = '#6a6a62'; c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1;
+    const edges = [[w.x - 6, w.y, 6, w.h], [w.x, w.y - 6, w.w, 6], [w.x + w.w, w.y, 6, w.h], [w.x, w.y + w.h, w.w, 6]];
+    for (const e of edges) { const cx = e[0] + e[2] / 2, cy = e[1] + e[3] / 2; if (WATER.some(o => cx > o.x && cx < o.x + o.w && cy > o.y && cy < o.y + o.h) || cx < 0 || cy < 0 || cx > MW || cy > MH) continue; c.fillRect(...e); c.strokeRect(...e); }
+  }
+  // hold zone marking
+  if (M.hold) { c.save(); c.strokeStyle = 'rgba(92,207,191,.35)'; c.lineWidth = 4; c.setLineDash([20, 14]); c.beginPath(); c.arc(M.hold.x, M.hold.y, M.hold.r, 0, TAU); c.stroke(); c.restore(); }
   // helipads
   const pad = (p, label, col) => {
     c.save();
@@ -731,7 +757,7 @@ function paintGround() {
   c.save();
   c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14;
   for (const o of obs) {
-    if (o.kind === 'border') continue;
+    if (o.kind === 'border' || o.kind === 'water') continue;
     const tall = !(o.kind === 'crate' || o.kind === 'sandbag' || o.kind === 'tree' || o.kind === 'furniture' || o.kind === 'pole');
     c.shadowOffsetX = tall ? 9 : 5; c.shadowOffsetY = tall ? 12 : 7;
     c.fillStyle = '#151816';
@@ -1037,6 +1063,17 @@ function drawSolid(c, o) {
     }
     case 'border': c.fillStyle = '#121513'; c.fillRect(o.x, o.y, o.w, o.h); break;
     case 'machine': {
+      if (o.model === 'tank') {
+        const cx = o.x + o.w / 2, cy = o.y + o.h / 2, r = o.w / 2;
+        const g = c.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 2, cx, cy, r);
+        g.addColorStop(0, o.destroyed ? '#3a3632' : '#c9c5b8'); g.addColorStop(1, o.destroyed ? '#151412' : '#6d6a62');
+        c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r, 0, TAU); c.fill();
+        c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 2; c.stroke();
+        c.beginPath(); c.arc(cx, cy, r * 0.6, 0, TAU); c.stroke();
+        if (!o.destroyed) { c.fillStyle = '#b8423a'; c.font = "700 12px 'Chakra Petch', sans-serif"; c.textAlign = 'center'; c.fillText('FUEL', cx, cy + 4); }
+        break;
+      }
+      if (o.model === 'crane') { c.fillStyle = '#b8902a'; c.fillRect(o.x, o.y, o.w, o.h); c.strokeStyle = '#1a1a1a'; c.lineWidth = 3; c.beginPath(); c.moveTo(o.x, o.y); c.lineTo(o.x + o.w, o.y + o.h); c.moveTo(o.x + o.w, o.y); c.lineTo(o.x, o.y + o.h); c.stroke(); break; }
       c.fillStyle = '#3c4646'; c.fillRect(o.x, o.y, o.w, o.h);
       c.fillStyle = '#2b3333'; c.fillRect(o.x + 6, o.y + 6, o.w - 12, o.h - 12);
       c.fillStyle = 'rgba(0,0,0,.4)'; for (let x = o.x + 12; x < o.x + o.w - 10; x += 8) c.fillRect(x, o.y + 12, 3, o.h - 24);
@@ -1198,43 +1235,10 @@ let diffKey = store.get('ko_diff') || 'normal';
 if (!DIFFS[diffKey]) diffKey = 'normal';
 let DIFF = DIFFS[diffKey];
 
-const ENEMY_SPAWNS = [
-  ['rifle', [[150, 960], [1250, 960]]],
-  ['rifle', [[300, 320]], 0],
-  ['rifle', [[600, 340]], Math.PI / 2],
-  ['scout', [[260, 640], [780, 660], [1150, 860], [600, 840]]],
-  ['rifle', [[1000, 250]], Math.PI / 2],
-  ['rifle', [[940, 480], [1120, 620]]],
-  ['sniper', [[1240, 60]], Math.PI * 0.62],
-  ['rifle', [[1650, 470]], 0],
-  ['gunner', [[1760, 250]], Math.PI / 2],
-  ['rifle', [[1490, 140], [1490, 820], [2100, 820], [2100, 640]]],
-  ['rifle', [[2420, 660]], Math.PI],
-  ['scout', [[2250, 840], [2720, 840], [2720, 450]]],
-  ['rifle', [[2450, 420]], Math.PI * 0.75],
-  ['sniper', [[2740, 860]], Math.PI],
-  ['rifle', [[480, 1300]], 0],
-  ['scout', [[600, 1560], [1220, 1480], [1220, 1900], [700, 1900]]],
-  ['rifle', [[1000, 1650]], -Math.PI / 2],
-  ['gunner', [[2050, 1300]], Math.PI],
-  ['rifle', [[1720, 1300]], Math.PI / 2],
-  ['rifle', [[2100, 1560]], Math.PI],
-  ['rifle', [[1500, 1070], [2400, 1070], [2400, 1880], [1480, 1880]]],
-  ['scout', [[1500, 960], [2740, 960]]],
-  ['rifle', [[1360, 1120]], Math.PI],
-];
-const OBJECTIVES_DEF = [
-  { id: 'q', name: 'QUVVAT bloki', short: 'QUVVAT', x: 1680, y: 260, color: '#f2c94c' },
-  { id: 'm', name: 'METALL yuki', short: 'METALL', x: 620, y: 260, color: '#c9d1d6' },
-  { id: 't', name: 'TEXNIKA diski', short: 'TEXNIKA', x: 2080, y: 1270, color: '#5ccfbf' },
-];
-const HOSTAGE_POS = { x: 2492, y: 712 };
-const INTEL_POS = [[1000, 560], [1880, 1620], [640, 1300], [2420, 628]];
-const CRATE_POS = [[450, 300], [1100, 200], [1650, 520], [2420, 700], [500, 1350], [1100, 1700], [1700, 1300], [2160, 1600], [1250, 1150], [2650, 1000], [150, 1100], [880, 780]];
 
 // ───────────────────────── state ─────────────────────────
 let state = 'menu';
-let HS = null, intel = [];
+let HS = null, intel = [], hold = { active: false, done: false, t: 0, waveT: 0 };
 let P, enemies, bullets, particles, casings, grenades, pickups, crates, objectives, floats, feed, lights, pings, dmgDirs;
 let cam = { x: 1400, y: 1000 }, shake = 0, gameTime = 0, banner = null, generatorOn = false;
 const RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1250,19 +1254,21 @@ function newGame() {
     gren: 3, med: 2, healT: 0, dodgeT: 0, dodgeCd: 0, dvx: 0, dvy: 0, iT: 0, walk: 0, moving: false, sprint: false,
     interactT: 0, interactTarget: null, shootT: 9, moveT: 0, animT: 0, fa: 0, crouch: false, stepT: 0, knifeT: 0, knifeCd: 0, grenAim: false, takedownTarget: null, dead: false, hurt: 0, flash: 0, triggerHeld: false, staminaIdle: 0
   };
-  enemies = ENEMY_SPAWNS.map(s => makeEnemy(s[0], s[1], s[2]));
+  enemies = M.enemies.map(s => makeEnemy(s[0], s[1], s[2]));
   bullets = []; particles = []; casings = []; grenades = []; pickups = []; floats = []; feed = []; lights = []; pings = []; dmgDirs = [];
   resetDoors();
-  crates = CRATE_POS.map(p => ({ x: p[0], y: p[1], opened: false }));
-  objectives = OBJECTIVES_DEF.map(o => Object.assign({ taken: false }, o));
-  HS = { x: HOSTAGE_POS.x, y: HOSTAGE_POS.y, a: Math.PI, hp: 70, state: 'captive', path: null, pi: 0, pathAge: 9, pathGoal: null, directT: 0, direct: false, moving: false, walk: 0, va: 1, flash: 0 };
-  intel = INTEL_POS.map(p => ({ x: p[0], y: p[1], taken: false }));
+  crates = M.crates.map(p => ({ x: p[0], y: p[1], opened: false }));
+  objectives = M.objectives.map(o => Object.assign({ taken: false, planted: false, timer: 0 }, o));
+  for (const o of obs) delete o.destroyed;
+  hold = { active: false, done: false, t: 0, waveT: 4 };
+  HS = { x: M.hostage ? M.hostage.x : -999, y: M.hostage ? M.hostage.y : -999, a: Math.PI, hp: 70, state: M.hostage ? 'captive' : 'none', path: null, pi: 0, pathAge: 9, pathGoal: null, directT: 0, direct: false, moving: false, walk: 0, va: 1, flash: 0 };
+  intel = M.intel.map(p => ({ x: p[0], y: p[1], taken: false }));
   ext = { active: false, hold: 0, need: 8, heliZ: 1 };
   stats = { kills: 0, shots: 0, hits: 0, dmgTaken: 0, takedowns: 0, intel: 0, start: 0 };
   gameTime = 0; shake = 0; generatorOn = false; deathTimer = 0;
   heliOut = { t: 0 };
   cam.x = P.x; cam.y = P.y;
-  showBanner('Operatsiya boshlandi', "Uchta yukni oling va garovdagi Azizni qutqaring.", '#5ccfbf');
+  showBanner(M.name, M.start, '#5ccfbf');
 }
 function makeEnemy(type, route, baseA) {
   const Tt = ETYPES[type];
@@ -1464,8 +1470,8 @@ function enemyGrenade(e) {
   if (e.va > 0.3) addFloat(e.x, e.y - 30, 'GRANATA!', '#e5484d');
   addFeed(`${e.T.name} granata otdi`, '#e5484d');
 }
-function explode(g) {
-  const R = GREN_R;
+function explode(g, scale = 1) {
+  const R = GREN_R * scale;
   sound('boom', clamp(distVol(g.x, g.y) + 0.2, 0, 1.2));
   shake = Math.max(shake, clamp(26 - dist(g.x, g.y, P.x, P.y) / 40, 4, 26));
   addLight(g.x, g.y, 420, '255,160,60', 0.85, 0.35);
@@ -1631,7 +1637,7 @@ function updatePlayer(dt) {
 
   // interaction
   let target = null, best = 50;
-  for (const o of objectives) if (!o.taken) { const d = dist(P.x, P.y, o.x, o.y); if (d < best) { best = d; target = o; } }
+  for (const o of objectives) if (!o.taken && !o.planted) { const d = dist(P.x, P.y, o.x, o.y); if (d < best) { best = d; target = o; } }
   for (const c of crates) if (!c.opened) { const d = dist(P.x, P.y, c.x, c.y); if (d < best) { best = d; target = c; } }
   if (HS && HS.state === 'captive') { const d = dist(P.x, P.y, HS.x, HS.y); if (d < best + 6) { best = d; target = HS; } }
   if (target !== P.interactTarget) P.interactT = 0;
@@ -1641,8 +1647,8 @@ function updatePlayer(dt) {
   }
   if (target && keys.has('KeyE')) {
     P.interactT += dt;
-    const need = target === HS ? 1.2 : target.id ? 1.4 : 0.7;
-    if (P.interactT >= need) { P.interactT = 0; if (target === HS) freeHostage(); else if (target.id) takeObjective(target); else openCrate(target); }
+    const need = interactTime(target);
+    if (P.interactT >= need) { P.interactT = 0; if (target === HS) freeHostage(); else if (target.type === 'charge') plantCharge(target); else if (target.type) completeObjective(target); else openCrate(target); }
   } else P.interactT = 0;
 
   // intel documents
@@ -1686,7 +1692,7 @@ function freeHostage() {
   showBanner('Aziz ozod qilindi', "U ortingizdan yuradi. Uni tirik evakuatsiya qiling.", '#f2c94c');
   sfx('door_open', 0.5);
   // the guards raised the alarm: a squad moves on the hut
-  for (const p of [[2760, 640, 'rifle'], [2760, 700, 'scout'], [2600, 1000, 'rifle']]) {
+  for (const p of M.hostage.alarm) {
     if (dist(p[0], p[1], P.x, P.y) < 360) continue;
     const e = makeEnemy(p[2], [[p[0], p[1]]], Math.PI);
     e.state = 'alert'; e.target = { x: HS.x + rand(-60, 60), y: HS.y + rand(-60, 60) }; e.alertT = 40; e.sus = 0.6;
@@ -1724,27 +1730,90 @@ function damageHostage(d, fx, fy) {
   } else if (Math.random() < 0.4) addFloat(HS.x, HS.y - 26, 'AZIZ YARALANDI', '#e5484d');
 }
 function checkExtraction() {
-  if (ext.active || objectives.some(o => !o.taken) || !HS || HS.state !== 'follow') return;
+  if (ext.active || objectives.some(o => !o.taken) || (HS.state !== 'follow' && HS.state !== 'none') || (M.hold && !hold.done)) return;
   ext.active = true;
-  showBanner('Evakuatsiya ochildi', "Aziz bilan shimoli-sharqdagi EVAK maydonchasiga boring.", '#f0a23b');
+  showBanner('Evakuatsiya ochildi', HS.state === 'follow' ? 'Aziz bilan EVAK maydonchasiga boring.' : 'EVAK maydonchasiga boring.', '#f0a23b');
   spawnReinforcements();
 }
-function takeObjective(o) {
+function interactTime(t) { return t === HS ? 1.2 : t.type === 'charge' ? 2.0 : t.type === 'switch' ? 1.5 : t.type ? 1.4 : 0.7; }
+function interactLabel(t) {
+  if (t === HS) return 'Azizni ozod qilish';
+  if (t.type === 'charge') return "Portlovchi o'rnatish";
+  if (t.type === 'switch') return 'Releni yoqish';
+  if (t.type) return `${t.short} yukini olish`;
+  return 'Qutini ochish';
+}
+function plantCharge(o) {
+  o.planted = true; o.timer = 7; o.beep = 0;
+  addFloat(o.x, o.y - 24, "PORTLOVCHI O'RNATILDI", '#f0a23b');
+  addFeed(`${o.name}: portlashgacha 7 s. Uzoqlashing!`, '#f0a23b');
+  sfx('pick', 0.6) || blip(700, 0.08, 0.08);
+}
+function updateCharges(dt) {
+  for (const o of objectives) {
+    if (!o.planted || o.taken) continue;
+    o.timer -= dt; o.beep -= dt;
+    if (o.beep <= 0) { o.beep = o.timer < 2 ? 0.25 : 0.8; blip(o.timer < 2 ? 1500 : 1100, 0.06, 0.08 * clamp(distVol(o.x, o.y) + 0.2, 0, 1)); }
+    if (o.timer <= 0) {
+      const tx = o.tank[0], ty = o.tank[1];
+      explode({ x: tx, y: ty }, 1.8);
+      setTimeout(() => state === 'play' && explode({ x: tx + rand(-40, 40), y: ty + rand(-40, 40) }, 1.1), 260);
+      for (const ob of obs) if (ob.kind === 'machine' && ob.model === 'tank' && Math.abs(ob.x + ob.w / 2 - tx) < 5 && Math.abs(ob.y + ob.h / 2 - ty) < 5) ob.destroyed = true;
+      groundDirty = true;
+      completeObjective(o);
+    }
+  }
+  // burning wrecks keep smoking
+  for (const o of objectives) if (o.type === 'charge' && o.taken && Math.random() < dt * 14) {
+    addP({ t: 'smoke', x: o.tank[0] + rand(-30, 30), y: o.tank[1] + rand(-30, 30), vx: rand(-15, 15), vy: rand(-25, -5), life: 3, max: 3, size: rand(14, 26), grow: 16, col: '35,33,30', a: 0.5 });
+    if (Math.random() < 0.6) addP({ t: 'fire', x: o.tank[0] + rand(-25, 25), y: o.tank[1] + rand(-25, 25), vx: rand(-10, 10), vy: rand(-30, -10), life: 0.5, max: 0.5, size: rand(10, 18) });
+  }
+}
+function updateHold(dt) {
+  if (!hold.active || hold.done) return;
+  const inZone = dist(P.x, P.y, M.hold.x, M.hold.y) < M.hold.r;
+  if (inZone) hold.t += dt;
+  hold.waveT -= dt;
+  if (hold.waveT <= 0) {
+    hold.waveT = 14;
+    const pts = M.hold.waves.slice().sort(() => Math.random() - 0.5).slice(0, 2 + (DIFF === DIFFS.hard ? 1 : 0));
+    for (const p of pts) {
+      if (dist(p[0], p[1], P.x, P.y) < 400) continue;
+      const e = makeEnemy(p[2], [[p[0], p[1]]], 0);
+      e.state = 'alert'; e.target = { x: M.hold.x + rand(-80, 80), y: M.hold.y + rand(-80, 80) }; e.alertT = 60; e.sus = 0.7;
+      enemies.push(e);
+    }
+    addFeed('Radio: yangi hujum to\'lqini!', '#e5484d');
+  }
+  if (hold.t >= M.hold.time) {
+    hold.done = true;
+    showBanner('Hudud ushlab turildi', 'Vertolyot yaqinlashmoqda. EVAK maydonchasiga boring.', '#f0a23b');
+    ext.active = true;
+  }
+}
+function completeObjective(o) {
   o.taken = true;
-  if (o.id === 'q') generatorOn = true;
-  addFloat(o.x, o.y - 24, o.short + ' OLINDI', o.color);
+  if (o.id === 'q' && o.type === 'item') generatorOn = true;
+  const verb = o.type === 'charge' ? "YO'Q QILINDI" : o.type === 'switch' ? 'YOQILDI' : 'OLINDI';
+  addFloat(o.x, o.y - 24, o.short + ' ' + verb, o.color);
   blip(880, 0.12, 0.1, 'sine'); setTimeout(() => blip(1320, 0.16, 0.1, 'sine'), 120);
   const left = objectives.filter(x => !x.taken).length;
   if (left === 0) {
-    if (HS.state === 'follow') checkExtraction();
-    else showBanner('Uchala yuk olindi', "Endi kulbadagi Azizni ozod qiling (shimoli-sharq).", '#f2c94c');
+    if (M.hold) {
+      hold.active = true; hold.waveT = 6;
+      showBanner('Barcha relelar yoqildi', `Boshqaruv binosini ${M.hold.time} soniya ushlab turing. Ta'minot tashlandi.`, '#5ccfbf');
+      // supply drop at the defence point
+      pickups.push({ x: M.hold.x - 20, y: M.hold.y, kind: 'armor' }, { x: M.hold.x + 20, y: M.hold.y, kind: 'ammo' }, { x: M.hold.x, y: M.hold.y + 22, kind: 'med' }, { x: M.hold.x, y: M.hold.y - 22, kind: 'gren' });
+      addFeed("Ta'minot boshqaruv binosiga tashlandi", '#5ccfbf');
+    } else if (HS.state === 'captive') showBanner('Vazifalar bajarildi', 'Endi garovdagi Azizni ozod qiling.', '#f2c94c');
+    else checkExtraction();
   } else {
-    showBanner(o.name + ' olindi', `Yana ${left} ta yuk qoldi.`, o.color);
+    showBanner(o.name + ' ' + verb.toLowerCase(), `Yana ${left} ta vazifa qoldi.`, o.color);
   }
   makeNoise(o.x, o.y, 300);
 }
 function spawnReinforcements() {
-  const pts = [[2760, 1320, 'rifle'], [2760, 1380, 'scout'], [1700, 40, 'rifle'], [1760, 40, 'gunner'], [2700, 40, 'scout'], [2200, 990, 'rifle']];
+  const pts = M.reinforce;
   for (const p of pts) {
     if (dist(p[0], p[1], P.x, P.y) < 500) continue;
     const e = makeEnemy(p[2], [[p[0], p[1]]], Math.PI);
@@ -2085,8 +2154,9 @@ function updateGrenades(dt) {
 }
 
 // ───────────────────────── main update ─────────────────────────
+function weatherForMission() { weather.drops.length = 0; }
 function updateWeather(dt) {
-  const want = RM ? 50 : 170;
+  const want = Math.round((RM ? 50 : 170) * (M.theme.rain ?? 1));
   while (weather.drops.length < want) weather.drops.push({ x: Math.random(), y: Math.random(), s: rand(0.7, 1.2) });
   for (const d of weather.drops) {
     d.y += dt * 1.3 * d.s; d.x += dt * 0.25 * d.s;
@@ -2111,6 +2181,8 @@ function update(dt) {
   updateDoors(dt);
   updatePlayer(dt);
   updateHostage(dt);
+  updateCharges(dt);
+  updateHold(dt);
   for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
   separateEnemies();
   updateBullets(dt);
@@ -2121,7 +2193,7 @@ function update(dt) {
   heliOut.t += dt;
   // extraction
   if (ext.active && !P.dead) {
-    const inZone = dist(P.x, P.y, EXT.x, EXT.y) < EXT.r, hIn = HS.state === 'follow' && dist(HS.x, HS.y, EXT.x, EXT.y) < EXT.r + 25;
+    const inZone = dist(P.x, P.y, EXT.x, EXT.y) < EXT.r, hIn = HS.state === 'none' || (HS.state === 'follow' && dist(HS.x, HS.y, EXT.x, EXT.y) < EXT.r + 25);
     if (inZone && hIn) ext.hold += dt; else ext.hold = Math.max(0, ext.hold - dt * 0.5);
     if (inZone && !hIn && !ext.warned) { ext.warned = true; addFeed('Aziz maydonchada bo\'lishi kerak', '#f2c94c'); }
     if (ext.hold >= ext.need) return endGame(true);
@@ -2174,9 +2246,12 @@ function sizeFx() {
 sizeFx();
 fxReady = true;
 const INTERIOR = [];
-for (const b of buildings) {
-  const n = b.w > 450 ? 2 : 1;
-  for (let i = 0; i < n; i++) INTERIOR.push({ x: b.x + b.w * (n === 1 ? 0.5 : i === 0 ? 0.3 : 0.72), y: b.y + b.h * 0.5, r: Math.min(b.w, b.h) * 0.85, a: 0.6, flicker: b.floor === 'garage', horiz: b.w > b.h });
+function rebuildInterior() {
+  INTERIOR.length = 0;
+  for (const b of buildings) {
+    const n = b.w > 450 ? 2 : 1;
+    for (let i = 0; i < n; i++) INTERIOR.push({ x: b.x + b.w * (n === 1 ? 0.5 : i === 0 ? 0.3 : 0.72), y: b.y + b.h * 0.5, r: Math.min(b.w, b.h) * 0.85, a: 0.6, flicker: b.floor === 'garage', horiz: b.w > b.h });
+  }
 }
 const HEIGHT = { wall: 0.075, border: 0.075, container: 0.055, vehicle: 0.032, machine: 0.045 };
 const SIDE = { wall: '#2a2d27', border: '#0c0e0d', vehicle: '#191b17', machine: '#222a2a' };
@@ -2395,7 +2470,7 @@ function render2DOverlay(dt, t, vis, inView, worldT, vx, vy, vw, vh) {
     ctx.beginPath(); ctx.rect(vx - 40, vy - 40, vw + 80, vh + 80);
     ctx.moveTo(vis[0], vis[1]);
     for (let i = 2; i < vis.length; i += 2) ctx.lineTo(vis[i], vis[i + 1]);
-    ctx.closePath(); ctx.fillStyle = 'rgba(2,4,7,.55)'; ctx.fill('evenodd');
+    ctx.closePath(); ctx.fillStyle = M.theme.fog ? 'rgba(8,12,16,.6)' : 'rgba(2,4,7,.55)'; ctx.fill('evenodd');
   }
   if (state !== 'menu' && heliOut.t < 6) drawHeli(LZ_IN.x - 40 - heliOut.t * heliOut.t * 60, LZ_IN.y - 60 - heliOut.t * heliOut.t * 40, -2.5, 1 + heliOut.t * 0.08, t);
   if (ext.active) { const k = clamp(ext.hold / ext.need, 0, 1); drawHeli(EXT.x + (1 - k) * 260, EXT.y - (1 - k) * 220, Math.PI * 0.75, 1.35 - k * 0.3, t); }
@@ -2473,6 +2548,7 @@ function render(dt) {
   }
   for (const o of objectives) {
     if (o.taken || !inView(o.x, o.y, 60)) continue;
+    if (o.type !== 'item') { drawObjectiveMarker(o, t); continue; }
     ctx.save(); ctx.translate(o.x, o.y);
     const pulse = (t * 0.8) % 1;
     ctx.strokeStyle = o.color; ctx.globalAlpha = 1 - pulse; ctx.lineWidth = 2;
@@ -2644,12 +2720,30 @@ function drawHeli(x, y, a, sc, t) {
   ctx.restore();
 }
 const STYLE_CIV = { cloth: '#56657a', vest: '#3e4756', helmet: '#2e2620', pack: '#3e4756', band: '#f2c94c', cap: true };
+function drawObjectiveMarker(o, t) {
+  ctx.save(); ctx.translate(o.x, o.y);
+  const pulse = (t * 0.8) % 1;
+  if (!o.planted) { ctx.strokeStyle = o.color; ctx.globalAlpha = 1 - pulse; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 16 + pulse * 24, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
+  if (o.type === 'switch') {
+    ctx.fillStyle = '#2b3236'; rr(ctx, -12, -16, 24, 32, 3); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = o.taken ? '#7dff9a' : '#c0453b'; ctx.fillRect(-6, -10, 12, 6); ctx.fillStyle = '#9aa3a8'; ctx.fillRect(-2, 0, 4, 10);
+  } else if (o.planted) {
+    const on = Math.floor(t * (o.timer < 2 ? 8 : 3)) % 2 === 0;
+    ctx.fillStyle = '#2a2a24'; ctx.fillRect(-9, -6, 18, 12); ctx.fillStyle = on ? '#ff4a3a' : '#5a1a14'; ctx.fillRect(-3, -3, 6, 6);
+    ctx.fillStyle = '#ff6a50'; ctx.font = "700 13px 'Chakra Petch', sans-serif"; ctx.textAlign = 'center'; ctx.fillText(o.timer.toFixed(1) + 's', 0, -14);
+  } else {
+    ctx.strokeStyle = o.color; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(0, 0, 12, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
 function drawHostage2D() {
-  if (!HS || HS.state === 'extracted') return;
+  if (!HS || HS.state === 'extracted' || HS.state === 'none') return;
   if (HS.state === 'dead') return;
   drawSoldier(ctx, HS.x, HS.y, HS.a, STYLE_CIV, { gun: 0, walk: HS.walk, moving: HS.moving, scale: HS.state === 'captive' ? 0.92 : 1, flash: Math.max(0, HS.flash) / 0.12 });
 }
 function drawWorldMarkers(t, inView) {
+  if (use3D()) for (const o of objectives) if (!o.taken && o.type !== 'item' && inView(o.x, o.y, 60)) drawObjectiveMarker(o, t);
+  if (hold.active && !hold.done) { ctx.strokeStyle = `rgba(92,207,191,${0.5 + Math.sin(t * 4) * 0.25})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(M.hold.x, M.hold.y, M.hold.r, 0, TAU); ctx.stroke(); ctx.strokeStyle = '#5ccfbf'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(M.hold.x, M.hold.y, M.hold.r + 10, -Math.PI / 2, -Math.PI / 2 + TAU * hold.t / M.hold.time); ctx.stroke(); }
   // hostage ring + intel folders (unlit so they read in the dark)
   if (HS && (HS.state === 'captive' || HS.state === 'follow')) {
     ctx.strokeStyle = HS.state === 'captive' ? `rgba(242,201,76,${0.45 + Math.sin(t * 4) * 0.25})` : 'rgba(242,201,76,.55)'; ctx.lineWidth = 2;
@@ -2731,8 +2825,8 @@ function drawWorldMarkers(t, inView) {
   // interaction prompt
   const it = P.interactTarget;
   if (it && !P.dead) {
-    const label = it === HS ? 'Azizni ozod qilish' : it.id ? `${it.short} yukini olish` : 'Qutini ochish';
-    const need = it === HS ? 1.2 : it.id ? 1.4 : 0.7;
+    const label = interactLabel(it);
+    const need = interactTime(it);
     const y = it.y - 40;
     ctx.font = "600 13px 'Chakra Petch', sans-serif";
     const keyTxt = (IS_TOUCH || touchUsed) ? 'OLISH' : 'E';
@@ -2772,15 +2866,17 @@ function bar(x, y, w, h, k, col, bg) {
 const mini = document.createElement('canvas');
 const MM_SCALE = 1 / 14;
 mini.width = Math.ceil(MW * MM_SCALE); mini.height = Math.ceil(MH * MM_SCALE);
-(function paintMini() {
+function paintMini() {
   const c = mini.getContext('2d');
   c.fillStyle = '#1b201a'; c.fillRect(0, 0, mini.width, mini.height);
+  c.fillStyle = '#14273a';
+  for (const w of WATER) c.fillRect(w.x * MM_SCALE, w.y * MM_SCALE, w.w * MM_SCALE, w.h * MM_SCALE);
   c.fillStyle = '#2b2f2c';
   for (const rd of ROADS) c.fillRect(rd.x * MM_SCALE, rd.y * MM_SCALE, rd.w * MM_SCALE, rd.h * MM_SCALE);
   c.fillStyle = '#2a2c27';
   for (const b of buildings) c.fillRect(b.x * MM_SCALE, b.y * MM_SCALE, b.w * MM_SCALE, b.h * MM_SCALE);
   for (const o of obs) {
-    if (o.kind === 'border' || o.kind === 'tree') continue;
+    if (o.kind === 'border' || o.kind === 'tree' || o.kind === 'water') continue;
     c.fillStyle = o.kind === 'wall' ? '#8a8f84' : o.kind === 'crate' || o.kind === 'sandbag' ? '#5b5440' : '#556058';
     c.fillRect(o.x * MM_SCALE, o.y * MM_SCALE, Math.max(1, o.w * MM_SCALE), Math.max(1, o.h * MM_SCALE));
   }
@@ -2788,7 +2884,7 @@ mini.width = Math.ceil(MW * MM_SCALE); mini.height = Math.ceil(MH * MM_SCALE);
   for (const t of trees) { c.beginPath(); c.arc(t.x * MM_SCALE, t.y * MM_SCALE, t.r * MM_SCALE, 0, TAU); c.fill(); }
   c.strokeStyle = '#5ccfbf'; c.lineWidth = 1; c.beginPath(); c.arc(LZ_IN.x * MM_SCALE, LZ_IN.y * MM_SCALE, LZ_IN.r * MM_SCALE, 0, TAU); c.stroke();
   c.strokeStyle = '#f0a23b'; c.beginPath(); c.arc(EXT.x * MM_SCALE, EXT.y * MM_SCALE, EXT.r * MM_SCALE, 0, TAU); c.stroke();
-})();
+}
 function drawMinimap(x, y, w, h, t) {
   // centered on player, cropped
   const s = MM_SCALE;
@@ -2930,31 +3026,41 @@ function drawHUD(t) {
   const ox = pad, oy = touch ? pad + 90 : pad + 6;
   const objW = narrow ? Math.min(200, W - mmW - pad * 2 - 24) : 214;
   if (!touch || H > 420) {
-    ctx.fillStyle = 'rgba(8,11,10,.72)'; ctx.fillRect(ox - 8, oy - 6, objW, 26 + (objectives.length + 2) * 20 + 20);
+    const extraRows = (HS.state !== 'none' ? 1 : 0) + (M.hold ? 1 : 0) + 1;
+    ctx.fillStyle = 'rgba(8,11,10,.72)'; ctx.fillRect(ox - 8, oy - 6, objW, 26 + (objectives.length + extraRows) * 20 + 20);
     hudText('VAZIFALAR', ox, oy + 10, 10, '#f0a23b');
     objectives.forEach((o, i) => {
       const y = oy + 32 + i * 20;
       ctx.strokeStyle = o.color; ctx.lineWidth = 1.5; ctx.strokeRect(ox, y - 9, 10, 10);
       if (o.taken) { ctx.fillStyle = o.color; ctx.fillRect(ox + 2, y - 7, 6, 6); }
       hudText(narrow ? o.short : o.name, ox + 18, y, narrow ? 12 : 13, o.taken ? '#8f978b' : '#e8e4d6', 'left', 500, 'Barlow');
-      if (!o.taken) hudText(Math.round(dist(P.x, P.y, o.x, o.y) / 10) + ' m', ox + objW - 16, y, 11, '#8f978b', 'right');
+      if (o.planted && !o.taken) hudText(o.timer.toFixed(1) + ' s', ox + objW - 16, y, 11, '#ff6a50', 'right');
+      else if (!o.taken) hudText(Math.round(dist(P.x, P.y, o.x, o.y) / 10) + ' m', ox + objW - 16, y, 11, '#8f978b', 'right');
     });
-    {
-      const y = oy + 32 + objectives.length * 20, hc = '#f2c94c';
+    let row = objectives.length;
+    if (M.hold) {
+      const y = oy + 32 + row * 20; row++;
+      ctx.strokeStyle = '#5ccfbf'; ctx.lineWidth = 1.5; ctx.strokeRect(ox, y - 9, 10, 10);
+      if (hold.done) { ctx.fillStyle = '#5ccfbf'; ctx.fillRect(ox + 2, y - 7, 6, 6); }
+      hudText(narrow ? 'MUDOFAA' : 'Binoni ushlab turish', ox + 18, y, narrow ? 12 : 13, hold.active || hold.done ? '#e8e4d6' : '#8f978b', 'left', 500, 'Barlow');
+      if (hold.active && !hold.done) hudText(Math.ceil(M.hold.time - hold.t) + ' s', ox + objW - 16, y, 11, '#5ccfbf', 'right');
+    }
+    if (HS.state !== 'none') {
+      const y = oy + 32 + row * 20, hc = '#f2c94c'; row++;
       ctx.strokeStyle = hc; ctx.lineWidth = 1.5; ctx.strokeRect(ox, y - 9, 10, 10);
       if (HS.state === 'follow' || HS.state === 'extracted') { ctx.fillStyle = hc; ctx.fillRect(ox + 2, y - 7, 6, 6); }
       hudText(narrow ? 'AZIZ' : 'Azizni qutqarish', ox + 18, y, narrow ? 12 : 13, HS.state === 'dead' ? '#e5484d' : '#e8e4d6', 'left', 500, 'Barlow');
       hudText(HS.state === 'captive' ? Math.round(dist(P.x, P.y, HS.x, HS.y) / 10) + ' m' : HS.state === 'follow' ? Math.ceil(HS.hp) + ' HP' : HS.state === 'dead' ? 'HALOK' : '', ox + objW - 16, y, 11, HS.state === 'follow' && HS.hp < 35 ? '#e5484d' : '#8f978b', 'right');
-      const y2 = y + 20;
-      hudText(`Razvedka ${stats.intel}/${intel.length}`, ox + 18, y2, narrow ? 11 : 12, '#8fb7ff', 'left', 500, 'Barlow');
     }
-    const ey = oy + 32 + (objectives.length + 2) * 20;
+    hudText(`Razvedka ${stats.intel}/${intel.length}`, ox + 18, oy + 32 + row * 20, narrow ? 11 : 12, '#8fb7ff', 'left', 500, 'Barlow'); row++;
+    const ey = oy + 32 + (row + 1) * 20 - 20;
     hudText(ext.active ? `${narrow ? 'Evak' : 'Evakuatsiya'}: ${Math.round(dist(P.x, P.y, EXT.x, EXT.y) / 10)} m` : (narrow ? 'Evak: yopiq' : 'Evakuatsiya: yopiq'), ox, ey, 12, ext.active ? '#f0a23b' : '#8f978b', 'left', 600, 'Barlow');
   }
 
   // ── offscreen objective arrows
   const targets = objectives.filter(o => !o.taken).map(o => ({ x: o.x, y: o.y, col: o.color, label: o.short }));
   if (ext.active) targets.push({ x: EXT.x, y: EXT.y, col: '#f0a23b', label: 'EVAK' });
+  if (hold.active && !hold.done) targets.push({ x: M.hold.x, y: M.hold.y, col: '#5ccfbf', label: 'MUDOFAA' });
   if (HS.state === 'captive' && !objectives.some(o => !o.taken)) targets.push({ x: HS.x, y: HS.y, col: '#f2c94c', label: 'AZIZ' });
   else if (HS.state === 'follow' && dist(HS.x, HS.y, P.x, P.y) > 260) targets.push({ x: HS.x, y: HS.y, col: '#f2c94c', label: 'AZIZ' });
   for (const tg of targets) {
@@ -2995,6 +3101,12 @@ function drawHUD(t) {
     hudText(banner.title.toUpperCase(), W / 2, by, Math.min(28, W / 16), banner.col, 'center', 700);
     hudText(banner.sub, W / 2, by + 22, 13, '#e8e4d6', 'center', 500, 'Barlow');
     ctx.globalAlpha = 1;
+  }
+  if (hold.active && !hold.done) {
+    const k = hold.t / M.hold.time, bw3 = Math.min(320, W - 60), bx = W / 2 - bw3 / 2, by = H * 0.68;
+    const inZ = dist(P.x, P.y, M.hold.x, M.hold.y) < M.hold.r;
+    hudText(inZ ? `MUDOFAA · ${Math.ceil(M.hold.time - hold.t)} s` : 'HUDUDGA QAYTING', W / 2, by - 8, 14, inZ ? '#5ccfbf' : '#e5484d', 'center', 700);
+    bar(bx, by, bw3, 6, k, '#5ccfbf');
   }
   // extraction progress
   if (ext.active && ext.hold > 0) {
@@ -3064,13 +3176,13 @@ function endGame(win) {
   state = 'end'; setScreen('end');
   const acc = stats.shots ? Math.round(stats.hits / stats.shots * 100) : 0;
   const objs = objectives.filter(o => o.taken).length;
-  $('endEyebrow').textContent = `Operatsiya natijasi · ${DIFF.label}`;
+  $('endEyebrow').textContent = `${M.name} · ${DIFF.label}`;
   $('endTitle').textContent = win ? 'Evakuatsiya qilindi' : 'Operatsiya muvaffaqiyatsiz';
   $('endTitle').className = win ? 'ok' : 'fail';
   $('endText').textContent = win
-    ? `Uchala yuk va Aziz HAVENga yetkazildi. Aziz ${Math.ceil(HS.hp)} HP bilan qutqarildi.`
+    ? (HS.state === 'follow' ? `Vazifalar bajarildi, Aziz ${Math.ceil(HS.hp)} HP bilan qutqarildi.` : 'Barcha vazifalar bajarildi. Vertolyot maydonchadan ko\'tarildi.')
     : HS.failed ? 'Aziz halok bo\'ldi. Uni o\'q chizig\'idan uzoqroq tuting va dushmanlarni oldinroq yo\'q qiling.'
-    : (objs ? `Siz ${objs} ta yukni olgan edingiz, lekin evakuatsiyaga yeta olmadingiz.` : 'Siz yiqildingiz. Ehtiyotroq harakat qiling: shovqin dushmanlarni chaqiradi.');
+    : (objs ? `Siz ${objs}/${objectives.length} vazifani bajargan edingiz, lekin evakuatsiyaga yeta olmadingiz.` : 'Siz yiqildingiz. Ehtiyotroq harakat qiling: shovqin dushmanlarni chaqiradi.');
   let score = objs * 800 + stats.kills * 100 + stats.takedowns * 150 + acc * 10 - Math.round(stats.dmgTaken) * 2 + stats.intel * 250 + (win ? Math.round(HS.hp) * 10 : 0);
   if (win) score += 1500 + Math.max(0, 600 - gameTime) * 4;
   score = Math.max(0, Math.round(score * DIFF.score));
@@ -3079,23 +3191,52 @@ function endGame(win) {
   $('endRank').className = 'rank' + (rank === 'S' ? ' s' : '');
   $('endRank').hidden = !win;
   $('endStats').innerHTML = [
-    [score, 'Ball'], [fmtTime(gameTime), 'Vaqt'], [stats.kills, "Yo'q qilindi"], [stats.takedowns, 'Jimgina'], [acc + '%', 'Aniqlik'], [`${objs}/3`, 'Yuklar'], [`${stats.intel}/${intel.length}`, 'Razvedka'], [Math.round(stats.dmgTaken), 'Olingan zarar']
+    [score, 'Ball'], [fmtTime(gameTime), 'Vaqt'], [stats.kills, "Yo'q qilindi"], [stats.takedowns, 'Jimgina'], [acc + '%', 'Aniqlik'], [`${objs}/${objectives.length}`, 'Vazifalar'], [`${stats.intel}/${intel.length}`, 'Razvedka'], [Math.round(stats.dmgTaken), 'Olingan zarar']
   ].map(s => `<div><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
   let bestTxt = '';
   if (win) {
-    const key = 'ko_best_' + diffKey, prev = parseFloat(store.get(key));
+    const mk = 'ko_rank_' + M.id, ranks = 'CBAS';
+    if (ranks.indexOf(rank) > ranks.indexOf(store.get(mk) || '')) store.set(mk, rank);
+    if (missionIdx + 1 < MISSIONS.length && unlocked() < missionIdx + 2) store.set('ko_unlocked', String(missionIdx + 2));
+    const key = 'ko_best_' + M.id + '_' + diffKey, prev = parseFloat(store.get(key));
     if (!prev || gameTime < prev) { store.set(key, String(gameTime)); bestTxt = `Yangi rekord vaqt (${DIFF.label}): ${fmtTime(gameTime)}`; }
     else bestTxt = `Eng yaxshi vaqt (${DIFF.label}): ${fmtTime(prev)}`;
-    const skey = 'ko_score_' + diffKey, sprev = parseFloat(store.get(skey)) || 0;
+    const skey = 'ko_score_' + M.id + '_' + diffKey, sprev = parseFloat(store.get(skey)) || 0;
     if (score > sprev) { store.set(skey, String(score)); bestTxt += ` · Yangi rekord ball: ${score}`; }
     else bestTxt += ` · Eng yuqori ball: ${sprev}`;
   }
   $('endBest').textContent = bestTxt;
-  setTimeout(() => $('againBtn').focus(), 50);
+  $('nextBtn').hidden = !(win && missionIdx + 1 < MISSIONS.length);
+  setTimeout(() => ($('nextBtn').hidden ? $('againBtn') : $('nextBtn')).focus(), 50);
+}
+function unlocked() { return Math.max(1, Math.min(MISSIONS.length, parseInt(store.get('ko_unlocked') || '1', 10) || 1)); }
+function renderMenu() {
+  $('mSector').textContent = M.sector;
+  $('mLede').textContent = M.lede;
+  $('mBrief').innerHTML = M.brief.map(b => `<li><b class="${b[0]}">${b[1]}</b><span>${b[2]}</span></li>`).join('');
+  const un = unlocked();
+  $('missionList').innerHTML = MISSIONS.map((m, i) => {
+    const rank = store.get('ko_rank_' + m.id);
+    const sub = i >= un ? 'Yopiq' : rank ? 'Reyting ' + rank : 'Missiya ' + (i + 1);
+    return `<button type="button" class="mcard" role="radio" data-m="${i}" aria-checked="${i === missionIdx}" ${i >= un ? 'disabled' : ''}><span>${sub}</span><b>${m.name}</b></button>`;
+  }).join('');
+  $('missionList').querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => selectMission(+b.dataset.m)));
+}
+function selectMission(i) {
+  if (i === missionIdx || i >= unlocked()) return;
+  loadMission(i);
+  renderMenu(); refreshBest();
+}
+function loadMission(i) {
+  missionIdx = i; store.set('ko_mission', String(i));
+  buildWorld(MISSIONS[i]);
+  newGame();
+  banner = null;
+  if (window.__R3 && window.__R3.ready && window.__R3.rebuild) window.__R3.rebuild();
 }
 function refreshBest() {
   const parts = Object.keys(DIFFS).map(k => {
-    const v = parseFloat(store.get('ko_best_' + k)), sc = parseFloat(store.get('ko_score_' + k));
+    const v = parseFloat(store.get('ko_best_' + M.id + '_' + k)), sc = parseFloat(store.get('ko_score_' + M.id + '_' + k));
     return v ? `${DIFFS[k].label} ${fmtTime(v)}${sc ? ' / ' + sc + ' ball' : ''}` : null;
   }).filter(Boolean);
   $('best').textContent = parts.length ? 'Rekordlar: ' + parts.join(' · ') : '';
@@ -3116,15 +3257,23 @@ document.querySelectorAll('[data-diff]').forEach(b => {
 });
 $('startBtn').addEventListener('click', startGame);
 $('againBtn').addEventListener('click', startGame);
+$('nextBtn').addEventListener('click', () => { loadMission(missionIdx + 1); renderMenu(); startGame(); });
+$('endMenuBtn').addEventListener('click', () => { state = 'menu'; setScreen('menu'); renderMenu(); refreshBest(); });
 $('resumeBtn').addEventListener('click', togglePause);
-$('quitBtn').addEventListener('click', () => { state = 'menu'; setScreen('menu'); refreshBest(); });
+$('quitBtn').addEventListener('click', () => { state = 'menu'; setScreen('menu'); renderMenu(); refreshBest(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') togglePause(); });
 if (IS_TOUCH) { $('keysDesk').hidden = true; $('keysTouch').hidden = false; }
 refreshBest();
 
 // ───────────────────────── boot ─────────────────────────
-newGame();
-banner = null;
+{
+  const saved = parseInt(store.get('ko_mission') || '0', 10);
+  missionIdx = saved >= 0 && saved < unlocked() ? saved : 0;
+  buildWorld(MISSIONS[missionIdx]);
+  newGame();
+  banner = null;
+  renderMenu(); refreshBest();
+}
 cam.x = 1400; cam.y = 900;
 let last = performance.now(), menuT = 0;
 function frame(now) {
@@ -3156,10 +3305,10 @@ window.__G = {
   get ext() { return ext; }, get lights() { return lights; }, get weather() { return weather; },
   get groundDirty() { return groundDirty; }, set groundDirty(v) { groundDirty = v; },
   doors, doorAngle, get SAMPLES() { return SAMPLES; }, ground, obs, trees, LAMPS, INTERIOR, buildings, WEAPONS, EXT, LZ_IN, MW, MH, M2W, IS_TOUCH,
-  get want3D() { return gfxMode === '3d'; }, get H() { return HS; }, get intel() { return intel; },
+  get want3D() { return gfxMode === '3d'; }, get M() { return M; }, get objectivesList() { return objectives; }, WATER, get hold() { return hold; }, get H() { return HS; }, get intel() { return intel; },
   on3DReady() { if (gfxMode === '3d') cv.classList.add('over3d'); paintGround(); },
 };
-window.__ko = { get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, obs, startGame, findPath, insideSolid, kill: e => killEnemy(e, 0.5), keys, pressed, mouse, get cam() { return cam; }, get ZOOM() { return ZOOM; }, get objectives() { return objectives; }, get ext() { return ext; }, get stats() { return stats; }, get gameTime() { return gameTime; }, doors, setDoor, losBlocked, get H() { return HS; } };
+window.__ko = { get P() { return P; }, get enemies() { return enemies; }, get state() { return state; }, obs, startGame, findPath, insideSolid, kill: e => killEnemy(e, 0.5), keys, pressed, mouse, get cam() { return cam; }, get ZOOM() { return ZOOM; }, get objectives() { return objectives; }, get ext() { return ext; }, get stats() { return stats; }, get gameTime() { return gameTime; }, doors, setDoor, losBlocked, get H() { return HS; }, get hold() { return hold; }, loadMission, get M() { return M; }, get missionIdx() { return missionIdx; }, buildings, insideSolid2: insideSolid };
 })();
 </script>
 <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>

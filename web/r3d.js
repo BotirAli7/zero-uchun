@@ -20,7 +20,8 @@ const TEXTURES = ['damaged_plaster_col', 'damaged_plaster_nor', 'concrete_wall_0
 const WALL_H = 2.6;
 const TOUCH = G.IS_TOUCH;
 
-let renderer, scene, camera, groundTex, M;
+let renderer, scene, camera, groundTex, M, world = null, TEX = null;
+const tanks3 = [];
 const lib = {};           // model name -> { scene, size, min }
 const units = new Map();  // game entity -> Unit
 const trees3 = [];
@@ -70,6 +71,7 @@ R3.boot = async function boot() {
       })),
       loader.loadAsync('assets/models/Soldier.json').then(g => { lib.soldier = g; tick(); }),
     ]);
+    TEX = tex;
     buildWorld(tex);
     buildLights();
     R3.ready = true;
@@ -137,7 +139,7 @@ function place(name, o, opt = {}) {
   g.scale.set(rot ? sz : sx, sy, rot ? sx : sz);
   if (rot) g.scale.set(sx, sy, sz);
   g.position.set((o.x + o.w / 2) / M, opt.y || 0, (o.y + o.h / 2) / M);
-  scene.add(g);
+  world.add(g);
   return g;
 }
 function placeAt(name, x, y, size, opt = {}) {
@@ -149,7 +151,7 @@ function placeAt(name, x, y, size, opt = {}) {
   g.scale.setScalar(s * (opt.scale || 1));
   g.rotation.y = opt.rot || 0;
   g.position.set(x / M, opt.y || 0, y / M);
-  scene.add(g);
+  world.add(g);
   return g;
 }
 function cloneMats(root) {
@@ -158,7 +160,17 @@ function cloneMats(root) {
   return mats;
 }
 
+function disposeTree(root) {
+  root.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) for (const m of [].concat(o.material)) m.dispose();
+  });
+}
 function buildWorld(tex) {
+  if (world) { scene.remove(world); disposeTree(world); }
+  world = new THREE.Group(); scene.add(world);
+  trees3.length = 0; doors3.length = 0; tanks3.length = 0; crate3 = []; obj3 = []; pick3 = [];
+  if (groundTex) groundTex.dispose();
   // ground: the 2D ground canvas (photo textures + decals) as a live texture
   groundTex = new THREE.CanvasTexture(G.ground);
   groundTex.colorSpace = THREE.SRGBColorSpace;
@@ -166,10 +178,10 @@ function buildWorld(tex) {
   const gm = new THREE.Mesh(new THREE.PlaneGeometry(G.MW / M, G.MH / M),
     new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.92, metalness: 0 }));
   gm.rotation.x = -Math.PI / 2; gm.position.set(G.MW / M / 2, 0, G.MH / M / 2);
-  gm.receiveShadow = true; scene.add(gm);
+  gm.receiveShadow = true; world.add(gm);
   // void around the map
   const vm = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x0b0d0c, roughness: 1 }));
-  vm.rotation.x = -Math.PI / 2; vm.position.set(G.MW / M / 2, -0.02, G.MH / M / 2); scene.add(vm);
+  vm.rotation.x = -Math.PI / 2; vm.position.set(G.MW / M / 2, -0.02, G.MH / M / 2); world.add(vm);
 
   // walls and containers as merged prisms with world-scaled UVs
   const wallS = quadGeo(), wallT = quadGeo(), contS = quadGeo(), contT = quadGeo();
@@ -183,13 +195,13 @@ function buildWorld(tex) {
   for (const [g, mat] of [[wallS, plaster], [wallT, cap], [contS, iron], [contT, iron]]) {
     if (!g.pos.length) continue;
     const mesh = new THREE.Mesh(toGeometry(g), mat);
-    mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
+    mesh.castShadow = true; mesh.receiveShadow = true; world.add(mesh);
   }
   // container tints
   for (const o of G.obs) if (o.kind === 'container') {
     const m = new THREE.Mesh(new THREE.BoxGeometry(o.w / M + 0.01, 0.02, o.h / M + 0.01),
       new THREE.MeshStandardMaterial({ color: new THREE.Color(o.tint), roughness: 0.6, metalness: 0.3, transparent: true, opacity: 0.45 }));
-    m.position.set((o.x + o.w / 2) / M, 2.56, (o.y + o.h / 2) / M); scene.add(m);
+    m.position.set((o.x + o.w / 2) / M, 2.56, (o.y + o.h / 2) / M); world.add(m);
   }
 
   // doors: hinged slabs driven by the simulation's door angle
@@ -201,14 +213,14 @@ function buildWorld(tex) {
     slab.position.set(L2 / 2 + 0.03, 1.075, 0); slab.castShadow = true; slab.receiveShadow = true; g.add(slab);
     for (const k of [0.05, -0.05]) { const kn = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), knobMat); kn.position.set(L2 - 0.08, 1.0, k); g.add(kn); }
     g.position.set(d.hx / M, 0, d.hy / M);
-    scene.add(g); doors3.push({ d, g });
+    world.add(g); doors3.push({ d, g });
   }
   // lintels above every door so walls read as continuous
   for (const d of G.doors) {
     const horiz = Math.abs(Math.sin(d.ca)) < 0.5;
     const lw = horiz ? d.len / M : 16 / M, ld = horiz ? 16 / M : d.len / M;
     const lin = new THREE.Mesh(new THREE.BoxGeometry(lw, 0.42, ld), new THREE.MeshStandardMaterial({ color: 0x8e8a80, roughness: 0.95 }));
-    lin.position.set((d.x + d.w / 2) / M, WALL_H - 0.21, (d.y + d.h / 2) / M); lin.castShadow = true; scene.add(lin);
+    lin.position.set((d.x + d.w / 2) / M, WALL_H - 0.21, (d.y + d.h / 2) / M); lin.castShadow = true; world.add(lin);
   }
 
   // props
@@ -226,6 +238,24 @@ function buildWorld(tex) {
       }
     } else if (o.kind === 'crate') {
       place('wooden_crate_01', o, { uniform: true, spin: (o.x * 7 + o.y) % 3 * 0.05 });
+    } else if (o.kind === 'machine' && o.model === 'tank') {
+      const r = o.w / 2 / M, h = 3.4;
+      const mat = new THREE.MeshStandardMaterial({ color: 0xbab6aa, roughness: 0.55, metalness: 0.6 });
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 28), mat); body.position.y = h / 2;
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat); cap.position.y = h; cap.scale.y = 0.25;
+      for (const k of [0.25, 0.5, 0.75]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.005, 0.03, 6, 32), new THREE.MeshStandardMaterial({ color: 0x55524c, roughness: 0.6, metalness: 0.7 })); ring.rotation.x = Math.PI / 2; ring.position.y = h * k; g.add(ring); }
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.01, r * 1.01, 0.35, 28, 1, true), new THREE.MeshStandardMaterial({ color: 0xa8342c, roughness: 0.6, side: THREE.DoubleSide })); band.position.y = h * 0.62;
+      for (const m of [body, cap, band]) { m.castShadow = true; m.receiveShadow = true; g.add(m); }
+      g.position.set((o.x + o.w / 2) / M, 0, (o.y + o.h / 2) / M);
+      world.add(g); tanks3.push({ o, g, mats: [mat], done: false });
+    } else if (o.kind === 'machine' && o.model === 'crane') {
+      const g = new THREE.Group(), yel = new THREE.MeshStandardMaterial({ color: 0xc89a2a, roughness: 0.6, metalness: 0.4 });
+      const w = o.w / M, h = 4.2;
+      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, h, 0.16), yel); leg.position.set(dx * w * 0.42, h / 2, dz * w * 0.42); leg.castShadow = true; g.add(leg); }
+      const top = new THREE.Mesh(new THREE.BoxGeometry(w * 1.05, 0.4, w * 1.05), yel); top.position.y = h; top.castShadow = true; g.add(top);
+      const boom = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.3, 0.45), yel); boom.position.set(2.2, h + 0.3, 0); boom.castShadow = true; g.add(boom);
+      g.position.set((o.x + o.w / 2) / M, 0, (o.y + o.h / 2) / M); world.add(g);
     } else if (o.kind === 'machine') {
       place('portable_generator', o, { uniform: true, yScale: 1 });
     } else if (o.kind === 'furniture') {
@@ -235,15 +265,20 @@ function buildWorld(tex) {
     }
   }
   // street lamps
-  for (const l of G.LAMPS) placeAt('street_lamp_01', l[0], l[1], 1.6, { height: 4.8, rot: Math.atan2(l[1] - 960, l[0] - 1360) > 0 ? 0 : Math.PI });
+  for (const l of G.LAMPS) {
+    let best = null, bd = 1e9;
+    for (const rd of G.M.roads) { const cx = Math.max(rd.x, Math.min(rd.x + rd.w, l[0])), cy = Math.max(rd.y, Math.min(rd.y + rd.h, l[1])); const d = Math.hypot(cx - l[0], cy - l[1]); if (d < bd) { bd = d; best = [cx, cy]; } }
+    const a = best ? Math.atan2(best[1] - l[1], best[0] - l[0]) : 0;
+    placeAt('street_lamp_01', l[0], l[1], 1.6, { height: 4.8, rot: -a });
+  }
   // street dressing
-  [[1200, 870, 'metal_trash_can', 0.6], [1460, 1050, 'utility_box_01', 0.9], [760, 1050, 'old_tyre', 0.8], [2240, 880, 'metal_trash_can', 0.6],
-   [1250, 1040, 'utility_box_01', 0.9], [690, 870, 'old_tyre', 0.8], [2050, 1150, 'cardboard_box_01', 0.6], [480, 1100, 'metal_trash_can', 0.6],
-   [2660, 1080, 'old_tyre', 0.8], [1700, 860, 'utility_box_01', 0.9]]
-    .forEach(([x, y, n, s]) => placeAt(n, x, y, s, { rot: (x + y) % 6 }));
-  // sofas in barracks / HQ
-  placeAt('Sofa_01', 1000, 300, 1.9, { rot: Math.PI / 2 });
-  placeAt('Sofa_01', 1700, 1560, 1.9, { rot: 0 });
+  (G.M.decor || []).forEach(([x, y, n, s, rot]) => placeAt(n, x, y, s, { rot: rot ?? (x + y) % 6 }));
+  // sea: dark, glossy water planes
+  const sea = new THREE.MeshStandardMaterial({ color: 0x0b1820, roughness: 0.12, metalness: 0.65 });
+  for (const w of G.WATER) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w.w / M, w.h / M), sea);
+    m.rotation.x = -Math.PI / 2; m.position.set((w.x + w.w / 2) / M, -0.35, (w.y + w.h / 2) / M); m.receiveShadow = true; world.add(m);
+  }
   // trees: trunk + alpha-tested leaf cards arranged in a crown
   const leafTex = makeLeafTexture();
   const barkMat = new THREE.MeshStandardMaterial({ color: 0x3b2f24, roughness: 1 });
@@ -269,12 +304,19 @@ function buildWorld(tex) {
     const crown = new THREE.Mesh(mergeGeometries(parts), mat);
     crown.castShadow = true; crown.receiveShadow = true; g.add(crown);
     g.position.set(tr.x / M, 0, tr.y / M);
-    scene.add(g);
+    world.add(g);
     trees3.push({ tr, g, mats: [mat] });
   }
   // loot crates, objectives, pickups
   crate3 = G.crates.map(c => ({ c, g: placeAt('ammo_box', c.x, c.y, 0.75, { rot: (c.x % 5) * 0.4 }) }));
   obj3 = G.objectives.map(o => {
+    if (o.type === 'switch') {
+      const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: 0x2e363a, roughness: 0.5, metalness: 0.6, emissive: new THREE.Color(o.color), emissiveIntensity: 0 });
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.35), mat); box.position.y = 0.75; box.castShadow = true; g.add(box);
+      g.position.set(o.x / M, 0, o.y / M); world.add(g);
+      return { o, g, mats: [mat], keep: true };
+    }
+    if (o.type !== 'item') return { o, g: null, mats: [] };
     const g = placeAt('ammo_box', o.x, o.y, 0.85);
     const mats = cloneMats(g);
     for (const m of mats) { m.emissive = new THREE.Color(o.color); m.emissiveIntensity = 0.0; }
@@ -533,11 +575,16 @@ R3.render = function (dt, sx, sy, vis) {
 
   for (const { d, g } of doors3) g.rotation.y = -G.doorAngle(d);
   // props state
-  for (const c of crate3) if (c.g) c.g.rotation.x = c.c.opened ? 0.0 : 0, c.g.visible = true, c.c.opened && (c.g.position.y = -0.05);
-  for (const ob of obj3) {
-    ob.g.visible = !ob.o.taken;
-    const k = 0.35 + Math.sin(t * 3) * 0.25;
-    for (const m of ob.mats) m.emissiveIntensity = k;
+  crate3.forEach((c, i) => { const cur = G.crates[i]; if (c.g && cur) c.g.position.y = cur.opened ? -0.05 : 0; });
+  obj3.forEach((ob, i) => {
+    const cur = G.objectives[i]; if (!ob.g || !cur) return;
+    ob.g.visible = ob.keep || !cur.taken;
+    const k = cur.taken ? (ob.keep ? 0.9 : 0) : 0.35 + Math.sin(t * 3) * 0.25;
+    for (const m of ob.mats) { m.emissiveIntensity = k; if (ob.keep && cur.taken) m.emissive.set(0x40ff80); else if (ob.keep) m.emissive.set(cur.color); }
+  });
+  for (const tk of tanks3) {
+    if (tk.o.destroyed && !tk.done) { tk.done = true; for (const m of tk.mats) { m.color.set(0x1d1b19); m.roughness = 1; m.metalness = 0.1; } tk.g.scale.y = 0.55; tk.g.rotation.z = 0.08; }
+    if (!tk.o.destroyed && tk.done) { tk.done = false; for (const m of tk.mats) { m.color.set(0xbab6aa); m.roughness = 0.55; m.metalness = 0.6; } tk.g.scale.y = 1; tk.g.rotation.z = 0; }
   }
   pick3.forEach((g, i) => { const pk = G.pickups[i]; g.visible = !!pk; if (pk) g.position.set(pk.x / M, 0, pk.y / M); });
   for (const tt of trees3) {
@@ -581,6 +628,12 @@ R3.render = function (dt, sx, sy, vis) {
 
   R3.camH = h;
   renderer.render(scene, camera);
+};
+R3.rebuild = function () {
+  if (!R3.ready) return;
+  for (const [ent, u] of units) { scene.remove(u.yaw); for (const w of Object.values(u.weapons)) scene.remove(w); }
+  units.clear();
+  buildWorld(TEX);
 };
 R3.setLowQuality = function () {
   if (!renderer) return;
