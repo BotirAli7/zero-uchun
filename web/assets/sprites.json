@@ -1,78 +1,37 @@
 {
- "frameW": 187,
- "frameH": 138,
- "pivotX": 68.75,
- "pivotY": 74.25,
- "srcScale": 0.55,
+ "ppm": 128.0,
+ "frameW": 256,
+ "frameH": 160,
+ "pivotX": 96,
+ "pivotY": 80,
+ "deadSize": 256,
  "sheets": {
-  "player_rifle": {
+  "gunner_legs": {
    "idle": [
     0,
-    10
-   ],
-   "move": [
-    1,
-    10
-   ],
-   "shoot": [
-    2,
-    3
-   ],
-   "reload": [
-    3,
-    10
-   ],
-   "meleeattack": [
-    4,
-    8
-   ],
-   "dead": [
-    5,
     1
+   ],
+   "walk": [
+    1,
+    12
+   ],
+   "run": [
+    2,
+    10
    ]
   },
-  "player_shotgun": {
+  "gunner_rifle": {
    "idle": [
     0,
-    10
+    8
    ],
    "move": [
     1,
-    10
+    12
    ],
    "shoot": [
     2,
     3
-   ],
-   "reload": [
-    3,
-    10
-   ],
-   "meleeattack": [
-    4,
-    8
-   ]
-  },
-  "player_handgun": {
-   "idle": [
-    0,
-    10
-   ],
-   "move": [
-    1,
-    10
-   ],
-   "shoot": [
-    2,
-    3
-   ],
-   "reload": [
-    3,
-    8
-   ],
-   "meleeattack": [
-    4,
-    8
    ]
   },
   "player_knife": {
@@ -81,105 +40,178 @@
     8
    ]
   },
-  "rifle_rifle": {
-   "idle": [
-    0,
-    10
-   ],
-   "move": [
-    1,
-    10
-   ],
-   "shoot": [
-    2,
-    3
-   ],
-   "dead": [
-    3,
-    1
-   ]
-  },
-  "gunner_rifle": {
-   "idle": [
-    0,
-    10
-   ],
-   "move": [
-    1,
-    10
-   ],
-   "shoot": [
-    2,
-    3
-   ],
-   "dead": [
-    3,
-    1
-   ]
-  },
-  "scout_handgun": {
-   "idle": [
-    0,
-    10
-   ],
-   "move": [
-    1,
-    10
-   ],
-   "shoot": [
-    2,
-    3
-   ],
-   "dead": [
-    3,
-    1
-   ]
-  },
-  "sniper_rifle": {
-   "idle": [
-    0,
-    10
-   ],
-   "move": [
-    1,
-    10
-   ],
-   "shoot": [
-    2,
-    3
-   ],
-   "dead": [
-    3,
-    1
-   ]
-  },
-  "feet": {
+  "player_legs": {
    "idle": [
     0,
     1
    ],
    "walk": [
     1,
-    10
+    12
    ],
    "run": [
     2,
     10
    ]
+  },
+  "player_pistol": {
+   "idle": [
+    0,
+    8
+   ],
+   "move": [
+    1,
+    12
+   ],
+   "shoot": [
+    2,
+    3
+   ],
+   "reload": [
+    3,
+    12
+   ]
+  },
+  "player_rifle": {
+   "idle": [
+    0,
+    8
+   ],
+   "move": [
+    1,
+    12
+   ],
+   "shoot": [
+    2,
+    3
+   ],
+   "reload": [
+    3,
+    12
+   ]
+  },
+  "player_shotgun": {
+   "idle": [
+    0,
+    8
+   ],
+   "move": [
+    1,
+    12
+   ],
+   "shoot": [
+    2,
+    3
+   ],
+   "reload": [
+    3,
+    12
+   ]
+  },
+  "rifle_legs": {
+   "idle": [
+    0,
+    1
+   ],
+   "walk": [
+    1,
+    12
+   ],
+   "run": [
+    2,
+    10
+   ]
+  },
+  "rifle_rifle": {
+   "idle": [
+    0,
+    8
+   ],
+   "move": [
+    1,
+    12
+   ],
+   "shoot": [
+    2,
+    3
+   ]
+  },
+  "scout_legs": {
+   "idle": [
+    0,
+    1
+   ],
+   "walk": [
+    1,
+    12
+   ],
+   "run": [
+    2,
+    10
+   ]
+  },
+  "scout_pistol": {
+   "idle": [
+    0,
+    8
+   ],
+   "move": [
+    1,
+    12
+   ],
+   "shoot": [
+    2,
+    3
+   ]
+  },
+  "sniper_legs": {
+   "idle": [
+    0,
+    1
+   ],
+   "walk": [
+    1,
+    12
+   ],
+   "run": [
+    2,
+    10
+   ]
+  },
+  "sniper_rifle": {
+   "idle": [
+    0,
+    8
+   ],
+   "move": [
+    1,
+    12
+   ],
+   "shoot": [
+    2,
+    3
+   ]
   }
  },
  "muzzle": {
   "rifle": [
-   183.8973607038123,
-   31.122287390029328
+   0.9527934694003992,
+   0.22939570901932527
   ],
   "shotgun": [
-   185.23623445825933,
-   32.046773238602725
+   0.9428913094382729,
+   0.2280002778728829
   ],
-  "handgun": [
-   129.5954994511526,
-   40.09330406147092
+  "pistol": [
+   0.6849279759810436,
+   0.00031566303158503395
   ]
+ },
+ "dead": {
+  "gunner": 0,
+  "player": 1,
+  "rifle": 2,
+  "scout": 3,
+  "sniper": 4
  }
 }

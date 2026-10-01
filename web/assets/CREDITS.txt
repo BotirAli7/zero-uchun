@@ -1,6 +1,11 @@
-Character sprites (player and enemy soldiers, rifle/shotgun/handgun/knife animations, feet)
-  "Animated Top Down Survivor Player" by rileygombart
-  https://opengameart.org/content/animated-top-down-survivor-player
-  License: CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
-  Changes: frames cropped, scaled and packed into atlases; enemy variants recoloured
-  (tools/build_sprites.py).
+Soldier sprites
+  Rendered from the rigged "Soldier.glb" model shipped with the three.js examples
+  (https://github.com/mrdoob/three.js/tree/r170/examples/models/gltf). The character
+  ("Vanguard") and its Idle/Walk/Run animations come from Adobe Mixamo. Weapons,
+  arm poses (IK), recolouring and the top-down render are done by tools/soldier_render.
+  Before a commercial release, download the same character from mixamo.com with your
+  own (free) Adobe account and re-render, so the licence is in your name.
+
+Ground, road, floor and crate textures (web/assets/tex)
+  ambientCG (https://ambientcg.com), CC0 1.0:
+  Asphalt022, Grass004, Ground037, Concrete034, WoodFloor041, Tiles074.

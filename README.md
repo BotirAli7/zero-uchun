@@ -42,9 +42,10 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
 | `Space` | Chetga sakrash |
 | `Esc` / `P` | Pauza |
 
-**Grafika mualliflari:** askar spraytlari va animatsiyalari, rileygombart,
-"Animated Top Down Survivor Player" (CC-BY 3.0, OpenGameArt). Batafsil:
-`web/assets/CREDITS.txt`. Atlaslar `tools/build_sprites.py` bilan yig'iladi.
+**Grafika:** askarlar 3D modeldan tepadan render qilingan (oyoq va tana alohida,
+qo'llar IK bilan qurolga qo'yilgan), yer/yo'l/pol teksturalari ambientCG (CC0).
+Mualliflar va litsenziyalar: `web/assets/CREDITS.txt`. Render vositasi:
+`tools/soldier_render/`.
 
 Pastdagi Godot 3.5 loyihasi (`project.godot`, `scenes/`, `scripts/`) avvalgi
 prototip. U tarix sifatida saqlab qolindi.

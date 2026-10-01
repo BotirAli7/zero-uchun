@@ -113,7 +113,6 @@ button:focus-visible{outline:2px solid var(--friend);outline-offset:3px}
     </div>
     <p class="note" id="keysTouch" hidden>Chap barmoq bilan yuring. O'ng barmoqni torting: nishonga oladi, uzoqroq tortsangiz otadi. Tugmalar o'ng tomonda: CHO'KISH bilan jim yuring, PICHOQ bilan dushmanni orqadan yo'q qiling.</p>
     <p class="note" id="best"></p>
-    <p class="note">Personaj grafikasi: rileygombart, "Animated Top Down Survivor Player" (CC-BY 3.0, OpenGameArt).</p>
   </div>
 </section>
 
@@ -464,9 +463,43 @@ const puddles = [];
 const ground = document.createElement('canvas');
 ground.width = MW; ground.height = MH;
 const gctx = ground.getContext('2d');
+// CC0 photo textures (ambientCG); the ground falls back to flat colours until they load
+const TEX = {}, TEX_NAMES = ['asphalt', 'grass', 'dirt', 'concrete', 'wood', 'tiles'];
+let texReady = false;
+(function () {
+  let left = TEX_NAMES.length;
+  for (const n of TEX_NAMES) {
+    const im = new Image();
+    im.onload = () => { if (--left === 0) { texReady = true; if (state !== 'play') paintGround(); } };
+    im.src = 'assets/tex/' + n + '.jpg';
+    TEX[n] = im;
+  }
+})();
+function texFill(c, name, scale, rot) {
+  const pt = c.createPattern(TEX[name], 'repeat');
+  if (pt.setTransform) pt.setTransform(new DOMMatrix().rotate(rot || 0).scale(scale));
+  return pt;
+}
 function paintGround() {
   const c = gctx, R = mulberry32(7);
-  c.fillStyle = '#434835'; c.fillRect(0, 0, MW, MH);
+  const tx = texReady;
+  c.fillStyle = tx ? texFill(c, 'grass', 0.45) : '#434835'; c.fillRect(0, 0, MW, MH);
+  if (tx) {
+    // worn earth patches over the grass, soft-edged
+    const dirt = texFill(c, 'dirt', 0.5);
+    for (let i = 0; i < 70; i++) {
+      const x = R() * MW, y = R() * MH, r = 90 + R() * 260;
+      const mc = document.createElement('canvas'); mc.width = mc.height = Math.ceil(r * 2);
+      const m = mc.getContext('2d');
+      const g = m.createRadialGradient(r, r, r * 0.2, r, r, r); g.addColorStop(0, 'rgba(0,0,0,.95)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      m.fillStyle = g; m.fillRect(0, 0, r * 2, r * 2);
+      m.globalCompositeOperation = 'source-in';
+      m.translate(-(x - r), -(y - r)); m.fillStyle = dirt; m.fillRect(x - r, y - r, r * 2, r * 2);
+      c.drawImage(mc, x - r, y - r);
+    }
+    c.fillStyle = 'rgba(30,34,24,.18)'; c.fillRect(0, 0, MW, MH);
+  }
+  if (!tx) {
   const patch = ['#3a402f', '#4e5140', '#57553e', '#373c2d', '#5b5640', '#47503a'];
   for (let i = 0; i < 300; i++) {
     const x = R() * MW, y = R() * MH, r = 60 + R() * 240;
@@ -484,6 +517,7 @@ function paintGround() {
     const x = R() * MW, y = R() * MH;
     c.strokeStyle = R() < 0.5 ? 'rgba(110,125,70,.35)' : 'rgba(70,85,45,.4)'; c.lineWidth = 1.2;
     c.beginPath(); c.moveTo(x, y); c.lineTo(x + (R() - 0.5) * 6, y - 3 - R() * 5); c.stroke();
+  }
   }
   // macro variation: two octaves of smoothed value noise
   const noise = (w, h) => {
@@ -503,11 +537,13 @@ function paintGround() {
   });
   // roads
   for (const rd of ROADS) {
-    c.fillStyle = '#585850'; c.fillRect(rd.x - (rd.dir === 'v' ? 10 : 0), rd.y - (rd.dir === 'h' ? 10 : 0), rd.w + (rd.dir === 'v' ? 20 : 0), rd.h + (rd.dir === 'h' ? 20 : 0));
+    c.fillStyle = tx ? texFill(c, 'concrete', 0.3) : '#585850'; c.fillRect(rd.x - (rd.dir === 'v' ? 10 : 0), rd.y - (rd.dir === 'h' ? 10 : 0), rd.w + (rd.dir === 'v' ? 20 : 0), rd.h + (rd.dir === 'h' ? 20 : 0));
+    if (tx) { c.fillStyle = 'rgba(48,50,46,.6)'; c.fillRect(rd.x - (rd.dir === 'v' ? 10 : 0), rd.y - (rd.dir === 'h' ? 10 : 0), rd.w + (rd.dir === 'v' ? 20 : 0), rd.h + (rd.dir === 'h' ? 20 : 0)); }
   }
   for (const rd of ROADS) {
-    c.fillStyle = '#2c2f2f'; c.fillRect(rd.x, rd.y, rd.w, rd.h);
-    for (let i = 0; i < rd.w * rd.h / 70; i++) { c.fillStyle = R() < 0.5 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.035)'; c.fillRect(rd.x + R() * rd.w, rd.y + R() * rd.h, 1.5, 1.5); }
+    c.fillStyle = tx ? texFill(c, 'asphalt', 0.4) : '#2c2f2f'; c.fillRect(rd.x, rd.y, rd.w, rd.h);
+    if (tx) { c.fillStyle = 'rgba(10,12,14,.35)'; c.fillRect(rd.x, rd.y, rd.w, rd.h); }
+    else for (let i = 0; i < rd.w * rd.h / 70; i++) { c.fillStyle = R() < 0.5 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.035)'; c.fillRect(rd.x + R() * rd.w, rd.y + R() * rd.h, 1.5, 1.5); }
   }
   c.setLineDash([34, 30]); c.strokeStyle = 'rgba(201,166,64,.6)'; c.lineWidth = 4;
   c.beginPath(); c.moveTo(0, 960); c.lineTo(1290, 960); c.moveTo(1430, 960); c.lineTo(MW, 960);
@@ -562,7 +598,18 @@ function paintGround() {
   // building floors
   for (const b of buildings) {
     const fx = b.x + 4, fy = b.y + 4, fw = b.w - 8, fh = b.h - 8;
-    if (b.floor === 'wood') {
+    if (tx) {
+      const tn = b.floor === 'wood' ? 'wood' : b.floor === 'tile' ? 'tiles' : 'concrete';
+      c.fillStyle = texFill(c, tn, tn === 'tiles' ? 0.22 : tn === 'wood' ? 0.32 : 0.45, tn === 'wood' ? 90 : 0); c.fillRect(fx, fy, fw, fh);
+      if (tn === 'tiles') { c.fillStyle = 'rgba(62,66,66,.8)'; c.fillRect(fx, fy, fw, fh); }
+      if (tn === 'concrete') { c.fillStyle = b.floor === 'garage' ? 'rgba(28,28,26,.7)' : 'rgba(44,46,44,.62)'; c.fillRect(fx, fy, fw, fh); }
+      if (tn === 'wood') { c.fillStyle = 'rgba(20,14,8,.25)'; c.fillRect(fx, fy, fw, fh); }
+      for (let i = 0; i < 8; i++) {
+        const x = fx + R() * fw, y = fy + R() * fh, r = 10 + R() * 40;
+        const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(10,10,8,.3)'); g.addColorStop(1, 'rgba(10,10,8,0)');
+        c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+    } else if (b.floor === 'wood') {
       c.fillStyle = '#5a4733'; c.fillRect(fx, fy, fw, fh);
       for (let y = fy; y < fy + fh; y += 14) {
         c.fillStyle = R() < 0.5 ? 'rgba(0,0,0,.12)' : 'rgba(255,220,170,.04)'; c.fillRect(fx, y, fw, 13);
@@ -628,8 +675,9 @@ function paintGround() {
   }
 }
 function drawCrate(c, o, R) {
-  c.fillStyle = '#6b5233'; c.fillRect(o.x, o.y, o.w, o.h);
-  c.strokeStyle = '#000'; c.lineWidth = 2; c.strokeRect(o.x, o.y, o.w, o.h);
+  c.fillStyle = texReady ? texFill(c, 'wood', 0.18, 90) : '#6b5233'; c.fillRect(o.x, o.y, o.w, o.h);
+  if (texReady) { c.fillStyle = 'rgba(90,64,32,.35)'; c.fillRect(o.x, o.y, o.w, o.h); }
+  c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 1.2; c.strokeRect(o.x, o.y, o.w, o.h);
   c.fillStyle = 'rgba(255,220,160,.08)'; c.fillRect(o.x, o.y, o.w, 3);
   c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 1;
   for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(o.x, o.y + k * o.h / 4); c.lineTo(o.x + o.w, o.y + k * o.h / 4); c.stroke(); }
@@ -696,7 +744,7 @@ function drawSandbags(c, o, R) {
       const cy = horiz ? o.y + th / 2 + (row ? -3 : 3) : o.y + k + 14;
       c.fillStyle = row ? '#867a59' : '#766b4d';
       c.beginPath(); c.ellipse(cx, cy, horiz ? 15 : th / 2 + 1, horiz ? th / 2 + 1 : 15, 0, 0, TAU); c.fill();
-      c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 1.4; c.stroke();
+      c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1; c.stroke();
     }
   }
 }
@@ -841,66 +889,67 @@ function drawSoldier(c, x, y, a, st, o) {
   c.restore();
 }
 
-// ───────────────────────── hand-drawn sprite atlases ─────────────────────────
-// Character art: "Animated Top Down Survivor Player" by rileygombart, CC-BY 3.0
-// (opengameart.org/content/animated-top-down-survivor-player). Atlases are built
-// by tools/build_sprites.py; until they load, the procedural soldier is used.
-const SPR = {"frameW":187,"frameH":138,"pivotX":68.75,"pivotY":74.25,"srcScale":0.55,"sheets":{"player_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"reload":[3,10],"meleeattack":[4,8],"dead":[5,1]},"player_shotgun":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"reload":[3,10],"meleeattack":[4,8]},"player_handgun":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"reload":[3,8],"meleeattack":[4,8]},"player_knife":{"meleeattack":[0,8]},"rifle_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"gunner_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"scout_handgun":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"sniper_rifle":{"idle":[0,10],"move":[1,10],"shoot":[2,3],"dead":[3,1]},"feet":{"idle":[0,1],"walk":[1,10],"run":[2,10]}},"muzzle":{"rifle":[183.8973607038123,31.122287390029328],"shotgun":[185.23623445825933,32.046773238602725],"handgun":[129.5954994511526,40.09330406147092]}};
-const WS = 0.32;                       // world px per source px
-const SPR_K = WS / SPR.srcScale;       // world px per atlas px
+// ───────────────────────── rendered soldier atlases ─────────────────────────
+// Soldiers are pre-rendered from a rigged 3D model (top-down orthographic camera,
+// legs and torso in separate passes) by tools/soldier_render. Until the atlases
+// load, the procedural soldier below is used.
+const SPR = {"ppm":128.0,"frameW":256,"frameH":160,"pivotX":96,"pivotY":80,"deadSize":256,"sheets":{"gunner_legs":{"idle":[0,1],"walk":[1,12],"run":[2,10]},"gunner_rifle":{"idle":[0,8],"move":[1,12],"shoot":[2,3]},"player_knife":{"meleeattack":[0,8]},"player_legs":{"idle":[0,1],"walk":[1,12],"run":[2,10]},"player_pistol":{"idle":[0,8],"move":[1,12],"shoot":[2,3],"reload":[3,12]},"player_rifle":{"idle":[0,8],"move":[1,12],"shoot":[2,3],"reload":[3,12]},"player_shotgun":{"idle":[0,8],"move":[1,12],"shoot":[2,3],"reload":[3,12]},"rifle_legs":{"idle":[0,1],"walk":[1,12],"run":[2,10]},"rifle_rifle":{"idle":[0,8],"move":[1,12],"shoot":[2,3]},"scout_legs":{"idle":[0,1],"walk":[1,12],"run":[2,10]},"scout_pistol":{"idle":[0,8],"move":[1,12],"shoot":[2,3]},"sniper_legs":{"idle":[0,1],"walk":[1,12],"run":[2,10]},"sniper_rifle":{"idle":[0,8],"move":[1,12],"shoot":[2,3]}},"muzzle":{"rifle":[0.9527934694003992,0.22939570901932527],"shotgun":[0.9428913094382729,0.2280002778728829],"pistol":[0.6849279759810436,0.00031566303158503395]},"dead":{"gunner":0,"player":1,"rifle":2,"scout":3,"sniper":4}};
+const M2W = 54;                        // world px per metre
+const SPR_K = M2W / SPR.ppm;           // world px per atlas px
 const IMG = {};
 let sprReady = false;
 (function loadSprites() {
-  const names = Object.keys(SPR.sheets);
+  const names = Object.keys(SPR.sheets).concat(['dead']);
   let left = names.length;
   for (const n of names) {
     const im = new Image();
     im.onload = () => { if (--left === 0) sprReady = true; };
-    im.onerror = () => { left = -1; };
     im.src = 'assets/' + n + '.png';
     IMG[n] = im;
   }
 })();
-function sheetFor(sk, art) { return (sk === 'player' ? 'player_' : sk + '_') + art; }
+function sheetFor(sk, art) { return sk + '_' + art; }
 function drawFrame(c, sheet, anim, frame) {
-  const info = SPR.sheets[sheet][anim] || SPR.sheets[sheet].idle;
+  const s = SPR.sheets[sheet], info = s[anim] || s.idle || s[Object.keys(s)[0]];
   const f = ((frame % info[1]) + info[1]) % info[1];
   c.drawImage(IMG[sheet], f * SPR.frameW, info[0] * SPR.frameH, SPR.frameW, SPR.frameH,
     -SPR.pivotX * SPR_K, -SPR.pivotY * SPR_K, SPR.frameW * SPR_K, SPR.frameH * SPR_K);
 }
-// o: { sheet, anim, frame, scale, feetA, feet: 'idle'|'walk'|'run', feetFrame, flash, alpha }
+// o: { sk, sheet, anim, frame, scale, feetA, feet: 'idle'|'walk'|'run', feetFrame, flash }
 function drawUnit(c, x, y, a, o) {
   const sc = o.scale || 1;
   c.save(); c.translate(x, y);
-  const sg = c.createRadialGradient(4, 6, 2, 4, 6, 24 * sc);
-  sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
-  c.fillStyle = sg; c.beginPath(); c.ellipse(4, 6, 24 * sc, 20 * sc, 0, 0, TAU); c.fill();
+  const sg = c.createRadialGradient(5, 7, 2, 5, 7, 22 * sc);
+  sg.addColorStop(0, 'rgba(0,0,0,.5)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = sg; c.beginPath(); c.ellipse(5, 7, 22 * sc, 18 * sc, 0, 0, TAU); c.fill();
   c.save(); c.rotate(o.feetA == null ? a : o.feetA); c.scale(sc, sc);
-  drawFrame(c, 'feet', o.feet || 'idle', o.feetFrame || 0);
+  drawFrame(c, o.sk + '_legs', o.feet || 'idle', o.feetFrame || 0);
   c.restore();
   c.rotate(a); c.scale(sc, sc);
   drawFrame(c, o.sheet, o.anim, o.frame);
   if (o.flash > 0) {
-    c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, o.flash) * 0.7;
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, o.flash) * 0.6;
     drawFrame(c, o.sheet, o.anim, o.frame);
   }
   c.restore();
 }
 function drawCorpse(c, x, y, a, sk, art, sc) {
-  const sheet = sk === 'player' ? 'player_rifle' : sheetFor(sk, art);
-  c.save(); c.translate(x, y); c.rotate(a); c.scale(sc || 1, sc || 1);
-  drawFrame(c, sheet, 'dead', 0);
+  const col = SPR.dead[sk] || 0, D = SPR.deadSize, k = SPR_K * (sc || 1);
+  c.save(); c.translate(x, y); c.rotate(a);
+  c.drawImage(IMG.dead, col * D, 0, D, D, -D / 2 * k, -D / 2 * k, D * k, D * k);
   c.restore();
 }
 
 // ───────────────────────── wall / vehicle art (drawn every frame) ─────────────────────────
+let wallPat = null;
 function drawSolid(c, o) {
   switch (o.kind) {
     case 'wall': {
       c.fillStyle = '#34372f'; c.fillRect(o.x, o.y, o.w, o.h);
       c.fillStyle = '#585b52'; c.fillRect(o.x + 1.5, o.y + 1.5, o.w - 3, o.h - 3);
-      c.fillStyle = '#4b4e46'; c.fillRect(o.x + 4, o.y + 4, o.w - 8, o.h - 8);
-      c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 1.6; c.strokeRect(o.x, o.y, o.w, o.h);
+      c.fillStyle = texReady ? (wallPat || (wallPat = texFill(ctx, 'concrete', 0.25))) : '#4b4e46'; c.fillRect(o.x + 1.5, o.y + 1.5, o.w - 3, o.h - 3);
+      if (texReady) { c.fillStyle = 'rgba(60,62,58,.45)'; c.fillRect(o.x + 1.5, o.y + 1.5, o.w - 3, o.h - 3); }
+      c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 1; c.strokeRect(o.x, o.y, o.w, o.h);
       c.fillStyle = 'rgba(255,255,255,.08)';
       if (o.w > o.h) c.fillRect(o.x, o.y, o.w, 2); else c.fillRect(o.x, o.y, 2, o.h);
       c.fillStyle = 'rgba(0,0,0,.3)';
@@ -922,7 +971,7 @@ function drawSolid(c, o) {
       const horiz = o.w > o.h;
       if (horiz) for (let x = o.x + 6; x < o.x + o.w - 4; x += 9) c.fillRect(x, o.y + 3, 3, o.h - 6);
       else for (let y = o.y + 6; y < o.y + o.h - 4; y += 9) c.fillRect(o.x + 3, y, o.w - 6, 3);
-      c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 2; c.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
+      c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1.2; c.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
       c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(o.x, o.y, o.w, 2);
       break;
     }
@@ -931,7 +980,7 @@ function drawSolid(c, o) {
 }
 function drawVehicle(c, o) {
   c.save();
-  c.strokeStyle = 'rgba(0,0,0,.85)'; c.lineWidth = 2; c.strokeRect(o.x, o.y, o.w, o.h);
+  c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1; c.strokeRect(o.x, o.y, o.w, o.h);
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   c.translate(cx, cy);
   let w = o.w, h = o.h;
@@ -1022,11 +1071,11 @@ const distVol = (x, y) => clamp(1 - dist(x, y, P.x, P.y) / 1500, 0, 1) ** 1.5;
 const WEAPONS = [
   { name: 'KS-47 avtomat', short: 'KS-47', dmg: 30, rate: 10, mag: 30, reserve: 150, reload: 2.1, spread: 0.03, bloom: 0.012, maxBloom: 0.1, speed: 2200, pellets: 1, range: 900, auto: true, noise: 900, kick: 2.2, snd: 'ar', gun: 34, art: 'rifle' },
   { name: "Bo'ri-12 drobovik", short: "BO'RI-12", dmg: 15, rate: 1.4, mag: 7, reserve: 35, reload: 2.5, spread: 0.15, bloom: 0, maxBloom: 0, speed: 1800, pellets: 9, range: 420, auto: false, noise: 950, kick: 6, snd: 'sg', gun: 30, art: 'shotgun' },
-  { name: "Signal-9 to'pponcha", short: 'SIGNAL-9', dmg: 26, rate: 5, mag: 12, reserve: 72, reload: 1.3, spread: 0.025, bloom: 0.02, maxBloom: 0.08, speed: 2000, pellets: 1, range: 650, auto: false, noise: 600, kick: 1.5, snd: 'pt', gun: 18, art: 'handgun' },
+  { name: "Signal-9 to'pponcha", short: 'SIGNAL-9', dmg: 26, rate: 5, mag: 12, reserve: 72, reload: 1.3, spread: 0.025, bloom: 0.02, maxBloom: 0.08, speed: 2000, pellets: 1, range: 650, auto: false, noise: 600, kick: 1.5, snd: 'pt', gun: 18, art: 'pistol' },
 ];
 const ETYPES = {
   rifle: { name: 'Avtomatchi', hp: 100, walk: 70, run: 150, vis: 640, fov: 2.0, rate: 8, burst: [3, 6], pause: [0.55, 1.2], dmg: 9, spread: 0.075, range: 760, pref: 360, turn: 5, react: 1, gun: 32, snd: 'ar', art: 'rifle' },
-  scout: { name: 'Razvedkachi', hp: 75, walk: 85, run: 200, vis: 560, fov: 2.1, rate: 13, burst: [5, 9], pause: [0.45, 0.9], dmg: 6, spread: 0.11, range: 520, pref: 220, turn: 7, react: 0.85, gun: 24, snd: 'smg', art: 'handgun' },
+  scout: { name: 'Razvedkachi', hp: 75, walk: 85, run: 200, vis: 560, fov: 2.1, rate: 13, burst: [5, 9], pause: [0.45, 0.9], dmg: 6, spread: 0.11, range: 520, pref: 220, turn: 7, react: 0.85, gun: 24, snd: 'smg', art: 'pistol' },
   gunner: { name: 'Pulemyotchi', hp: 230, armor: 0.3, walk: 55, run: 105, vis: 620, fov: 1.9, rate: 11, burst: [9, 15], pause: [1.0, 1.8], dmg: 8, spread: 0.13, range: 760, pref: 420, turn: 3.5, react: 1.2, gun: 38, scale: 1.12, snd: 'lmg', art: 'rifle' },
   sniper: { name: 'Snayper', hp: 80, walk: 60, run: 120, vis: 1150, fov: 1.2, rate: 0.5, burst: [1, 1], pause: [2.4, 3.2], dmg: 48, spread: 0.012, range: 1300, pref: 0, turn: 1.6, react: 1.4, gun: 46, snd: 'sniper', static: true, art: 'rifle' },
 };
@@ -1228,7 +1277,7 @@ function aimAngle() {
 }
 function muzzle(x, y, a, gl, sc = 1, art) {
   let fx = gl, fy = 3.6;
-  if (art && SPR.muzzle[art]) { fx = SPR.muzzle[art][0] * WS; fy = SPR.muzzle[art][1] * WS; }
+  if (art && SPR.muzzle[art]) { fx = SPR.muzzle[art][0] * M2W; fy = SPR.muzzle[art][1] * M2W; }
   return { x: x + (Math.cos(a) * fx - Math.sin(a) * fy) * sc, y: y + (Math.sin(a) * fx + Math.cos(a) * fy) * sc };
 }
 function ejectCasing(x, y, a) {
@@ -2070,7 +2119,7 @@ function render(dt) {
       const moving = mv > 0.2;
       const shoot = e.shotT < 0.09;
       drawUnit(ctx, e.x, e.y, e.a, {
-        sheet: sheetFor(e.type, e.T.art), scale: e.T.scale,
+        sk: e.type, sheet: sheetFor(e.type, e.T.art), scale: e.T.scale,
         anim: shoot ? 'shoot' : moving ? 'move' : 'idle',
         frame: shoot ? Math.floor(e.shotT / 0.03) : moving ? Math.floor(e.mt * 13) : Math.floor((t + e.look) * 7),
         feetA: moving ? e.fa : null, feet: moving ? (mv / dt > 160 ? 'run' : 'walk') : 'idle', feetFrame: Math.floor((e.mt || 0) * 15),
@@ -2091,12 +2140,12 @@ function render(dt) {
     P.lx = P.x; P.ly = P.y;
     if (sprReady) {
       let sheet = sheetFor('player', w.art), anim = 'idle', frame = Math.floor(P.animT * 7);
-      if (P.knifeT > 0) { sheet = 'player_knife'; anim = 'meleeattack'; frame = Math.floor((1 - P.knifeT / 0.32) * 8); }
+      if (P.knifeT > 0) { sheet = 'player_knife'; anim = 'meleeattack'; frame = Math.floor((1 - P.knifeT / 0.32) * 7.99); }
       else if (P.reloadT > 0) { anim = 'reload'; frame = Math.floor((1 - P.reloadT / w.reload) * SPR.sheets[sheet].reload[1]); }
       else if (P.shootT < 0.09) { anim = 'shoot'; frame = Math.floor(P.shootT / 0.03); }
       else if (P.moving) { anim = 'move'; frame = Math.floor(P.moveT * 13); }
       drawUnit(ctx, P.x, P.y, P.a, {
-        sheet, anim, frame, scale: P.crouch ? 0.9 : 1,
+        sk: 'player', sheet, anim, frame, scale: P.crouch ? 0.9 : 1,
         feetA: P.moving ? P.fa : null, feet: P.moving ? (P.sprint ? 'run' : 'walk') : 'idle', feetFrame: Math.floor(P.moveT * 15),
         flash: P.iT > 0 ? 0.6 : 0
       });

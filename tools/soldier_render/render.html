@@ -1,0 +1,101 @@
+<!doctype html><html><body style="margin:0">
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import { makeRig, buildWeapon, ik } from './rig.js';
+const SIZE = 256, HALF = 1.0, FWD = 0.25;          // frame covers 2.4 m, centred 0.3 m ahead of the body
+const R = await makeRig(SIZE);
+const { THREE, bones, mixer, clips, model, scene, r } = R;
+const key = scene.children.find(o => o.isDirectionalLight); key.position.set(-3, 8, 3);
+const body = R.mats.find(m => m.name.includes('Body'));
+const weapons = { rifle: buildWeapon('rifle'), shotgun: buildWeapon('shotgun'), pistol: buildWeapon('pistol'), knife: buildWeapon('knife') };
+for (const w of Object.values(weapons)) { w.visible = false; scene.add(w); }
+const cam = new THREE.OrthographicCamera(-HALF, HALF, HALF, -HALF, 0.01, 100);
+cam.position.set(0, 20, -FWD); cam.up.set(-1, 0, 0); cam.lookAt(0, 0, -FWD);
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const F = V(0, 0, -1), RT = V(1, 0, 0);
+let action = null;
+function setClip(name, t) {
+  mixer.stopAllAction();
+  action = mixer.clipAction(clips[name]); action.reset().play(); mixer.setTime(t);
+}
+function resetBones() { for (const b of Object.values(bones)) b.scale.set(1, 1, 1); model.rotation.set(0, 0, 0); model.position.set(0, 0, 0); }
+// returns world muzzle point for metadata
+function poseWeapon(kind, o) {
+  for (const w of Object.values(weapons)) w.visible = false;
+  model.updateMatrixWorld(true);
+  const ra = new THREE.Vector3(), la = new THREE.Vector3(), sp = new THREE.Vector3();
+  bones.RightArm.getWorldPosition(ra); bones.LeftArm.getWorldPosition(la); bones.Spine2.getWorldPosition(sp);
+  bones.RightForeArm.rotation.z += 0.6; bones.LeftForeArm.rotation.z -= 0.6;
+  if (kind === 'knife') {
+    const k = weapons.knife; k.visible = true;
+    const ang = 1.0 - o.p * 1.9;                     // swing from right to left across the front
+    const dir = F.clone().applyAxisAngle(V(0, 1, 0), ang);
+    const hand = ra.clone().add(dir.multiplyScalar(0.5)).add(V(0, -0.18 + Math.sin(o.p * Math.PI) * 0.08, 0));
+    ik([bones.RightArm, bones.RightForeArm], bones.RightHand, hand);
+    ik([bones.LeftArm, bones.LeftForeArm], bones.LeftHand, la.clone().add(F.clone().multiplyScalar(0.28)).add(V(0.12, -0.25, 0)));
+    bones.RightHand.updateMatrixWorld(true);
+    const hp = new THREE.Vector3(); bones.RightHand.getWorldPosition(hp);
+    k.position.copy(hp); k.rotation.set(0, Math.PI + ang * 0.8, 0); k.updateMatrixWorld(true);
+    return null;
+  }
+  const w = weapons[kind]; w.visible = true;
+  const recoil = o.recoil || 0, roll = o.roll || 0, lower = o.lower || 0;
+  if (kind === 'pistol') {
+    const c = sp.clone().add(F.clone().multiplyScalar(0.5 - recoil)).add(V(0.02, 0.05 - lower, 0));
+    w.position.copy(c); w.rotation.set(recoil * 4, Math.PI, roll);
+  } else {
+    w.position.set(ra.x - 0.06, ra.y - 0.13 - lower, ra.z - 0.2 + recoil);
+    w.rotation.set(recoil * 1.5 - lower * 0.6, Math.PI - 0.14, roll);
+  }
+  w.updateMatrixWorld(true);
+  const P = (x, y, z) => V(x, y, z).applyMatrix4(w.matrixWorld);
+  const grip = P(0, -0.02, -0.02);
+  let fore = kind === 'pistol' ? P(0.01, -0.03, 0.0) : P(0, 0.0, kind === 'shotgun' ? 0.42 : 0.42);
+  if (o.leftHand) fore = o.leftHand(P, la);
+  ik([bones.RightArm, bones.RightForeArm], bones.RightHand, grip);
+  ik([bones.LeftArm, bones.LeftForeArm], bones.LeftHand, fore);
+  return P(0, 0.065, kind === 'pistol' ? 0.19 : kind === 'shotgun' ? 0.8 : 0.81);
+}
+function snap() { r.render(scene, cam); return r.domElement.toDataURL('image/png'); }
+const toPx = v => [(-v.z - FWD) * SIZE / (2 * HALF) + SIZE / 2, (v.x) * SIZE / (2 * HALF) + SIZE / 2];
+window.frame = (o) => {
+  body.color.setRGB(...o.tint);
+  resetBones();
+  if (o.pass === 'dead') {
+    setClip('TPose', 0);
+    for (const w of Object.values(weapons)) w.visible = false;
+    model.updateMatrixWorld(true);
+    bones.LeftArm.rotation.x += 0.5; bones.RightArm.rotation.x += 0.4; bones.LeftUpLeg.rotation.z += 0.15; bones.RightUpLeg.rotation.z -= 0.2;
+    model.rotation.x = -Math.PI / 2; model.position.set(0, 0.15, 0.92 - FWD);
+    const g = weapons.rifle; g.visible = true; g.position.set(0.5, 0.05, -0.2); g.rotation.set(-Math.PI / 2, 0.5, 0);
+    return { url: snap() };
+  }
+  setClip(o.clip, o.t);
+  model.updateMatrixWorld(true);
+  let muzzle = null;
+  if (o.pass === 'legs') {
+    bones.Spine.scale.set(0.001, 0.001, 0.001);
+    for (const w of Object.values(weapons)) w.visible = false;
+  } else {
+    bones.LeftUpLeg.scale.set(0.001, 0.001, 0.001); bones.RightUpLeg.scale.set(0.001, 0.001, 0.001);
+    let opt = { recoil: o.recoil, roll: o.roll, lower: o.lower, p: o.p };
+    if (o.reload) {
+      const p = o.p;   // left hand: handguard -> magazine -> chest pouch -> magazine -> handguard
+      opt.lower = Math.sin(p * Math.PI) * 0.06; opt.roll = Math.sin(p * Math.PI) * 0.5;
+      opt.leftHand = (P, la) => {
+        const hg = P(0, 0, 0.42), mag = P(0.0, -0.12, 0.14), pouch = la.clone().add(V(0.05, -0.32, -0.12));
+        const seg = (a, b, k) => a.clone().lerp(b, k);
+        if (p < 0.25) return seg(hg, mag, p / 0.25);
+        if (p < 0.5) return seg(mag, pouch, (p - 0.25) / 0.25);
+        if (p < 0.8) return seg(pouch, mag, (p - 0.5) / 0.3);
+        return seg(mag, hg, (p - 0.8) / 0.2);
+      };
+    }
+    const m = poseWeapon(o.weapon, opt);
+    if (m) muzzle = toPx(m);
+  }
+  model.updateMatrixWorld(true);
+  return { url: snap(), muzzle, pivot: toPx(V(0, 0, 0)) };
+};
+window.ready = true;
+</script></body></html>
