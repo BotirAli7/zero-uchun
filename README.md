@@ -1,3 +1,40 @@
+# Kestrel Ops: brauzerda o'ynaladigan taktik versiya
+
+`web/index.html` o'yinning yangi, qayta yaratilgan versiyasi. Bu Delta Force
+uslubidagi tepadan ko'rinadigan taktik shuter. Hech narsa o'rnatish shart emas:
+faylni brauzerda oching. Telefonda sensorli boshqaruv avtomatik yoqiladi.
+
+**Vazifa:** Dust Lantern sektoridan uchta yukni olib chiqish (QUVVAT bloki,
+METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
+
+**Asosiy imkoniyatlar:**
+- Ko'rish maydoni (fog of war): devor orqasidagi dushmanlar ko'rinmaydi
+- 4 xil dushman (avtomatchi, razvedkachi, pulemyotchi, lazerli snayper). Ular
+  patrul qiladi, shovqinni eshitadi, bir-birini chaqiradi va yo'l topib keladi
+- 3 qurol (avtomat, drobovik, to'pponcha), granata, dori, zirh, sakrash
+- Loot qutilari, minixarita, kill feed, zarar yo'nalishi ko'rsatkichi
+- Evakuatsiya paytida dushman kuchaytirmasi keladi, vertolyot qo'nadi
+- 3 qiyinlik darajasi, eng yaxshi vaqt brauzerda saqlanadi
+- Ovozlar WebAudio orqali generatsiya qilinadi (tashqi fayl yo'q)
+
+| Tugma | Amal |
+|---|---|
+| `W A S D` | Yurish |
+| `Shift` | Yugurish |
+| Sichqoncha chap / o'ng | Otish / nishonga olish (uzoqroq ko'rish) |
+| `1 2 3`, g'ildirak | Qurol tanlash |
+| `R` | Qayta o'qlash |
+| `G` | Granata (kursor tomonga) |
+| `E` (bosib turish) | Yukni olish, qutini ochish |
+| `Q` | Dori qutisi |
+| `Space` | Chetga sakrash |
+| `Esc` / `P` | Pauza |
+
+Pastdagi Godot 3.5 loyihasi (`project.godot`, `scenes/`, `scripts/`) avvalgi
+prototip. U tarix sifatida saqlab qolindi.
+
+---
+
 # Kestrel City — 3-bosqich namunasi
 
 `docs/KESTREL_CITY_YAGONA_REJA_UZ_V5.md` rejasiga asosan, hujjatning o'z
