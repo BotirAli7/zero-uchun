@@ -22,6 +22,10 @@ METALL yuki, TEXNIKA diski), keyin EVAK maydonchasida 8 soniya turish.
 - Dushmanlar sizni panadan chiqarish uchun granata otadi va granatadan qochadi
 - Granatani bosib turganda traektoriya va portlash radiusi ko'rinadi
 - Yomg'ir va chaqmoq; oxirida ball va S/A/B/C reyting
+- Grafika: dinamik yoritish (o'yinchi fonari, ko'cha chiroqlari, xona
+  chiroqlari, otishma chaqnashi), 2.5D balandlikdagi devorlar, konteynerlar
+  va mashinalar, soyali askar spraytlari, mebel, ko'lmaklar, piyodalar
+  yo'lagi, vinyetka va kino doni. Sekin qurilmalarda sifat avtomatik pasayadi
 
 | Tugma | Amal |
 |---|---|
